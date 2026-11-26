@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>提问与筛选</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="提问与筛选">
+<style>
+/* VOICE: 安静、克制的工作手册，天天翻也不累
+   IDEA: 车站时刻表——左边固定站牌（导航），右边一班一班的“招”，编号醒目
+   PICTURE: 速查页一屏看完14招；方法库左列表右详情；记录像一本可检索的账本
+   COLOUR and TYPE: 白底黑字，信号红只用在当前项和警示；Archivo 宽体编号 + 思源黑体
+   LAYOUT: 桌面左侧栏 + 内容区；手机顶栏 + 底部五个标签 */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#0e0e0e);--ink:light-dark(#111,#f1f1f1);--mut:light-dark(#6b6b6b,#a0a0a0);--line:light-dark(#111,#e9e9e9);--hair:light-dark(#e4e4e4,#2a2a2a);--soft:light-dark(#f4f4f4,#181818);--red:#e4002b;--ok:light-dark(#0a7a3d,#4cc47f)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{margin:0;overscroll-behavior-y:none;background:var(--bg);color:var(--ink);font:16px/1.65 "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;overflow-x:clip}
+.num{font-family:"Helvetica Neue",Arial,sans-serif;font-stretch:112%;font-weight:800}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0 0 8px;font-weight:900;text-wrap:balance}
+h2{font-size:22px;line-height:1.25;margin:0 0 6px;font-weight:900}
+h3{font-size:17px;line-height:1.35;margin:0 0 4px;font-weight:700}
+p{margin:0 0 10px;max-width:68ch}
+a{color:inherit}
+.mut{color:var(--mut)}.small{font-size:13px;color:var(--mut)}
+/* 结构 */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:2px solid var(--line);display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) max(3vw,14px,env(safe-area-inset-right)) 10px max(3vw,14px,env(safe-area-inset-left))}
+.brand{font-weight:900;font-size:17px;white-space:nowrap;text-decoration:none}
+.brand i{display:inline-block;width:12px;height:12px;background:var(--red);margin-right:8px;vertical-align:0}
+.seg{display:flex;border:1.5px solid var(--line);margin-left:auto}
+.seg button{border:0;border-right:1.5px solid var(--line);min-height:36px;padding:0 12px;font-size:14px}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.shell{display:grid;grid-template-columns:200px minmax(0,1fr);min-height:calc(100vh - 60px)}
+.side{border-right:1px solid var(--hair);padding:18px 10px;position:sticky;top:58px;height:calc(100vh - 58px);overflow:auto}
+.side a,.tabs a{display:flex;align-items:center;gap:10px;text-decoration:none;padding:10px 12px;font-weight:500;min-height:44px}
+.side a[aria-current=page]{background:var(--soft);box-shadow:inset 4px 0 0 var(--red);font-weight:700}
+.side .badge,.tabs .badge{margin-left:auto;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:0 7px;line-height:20px}
+.side .badge:empty,.tabs .badge:empty{display:none}
+main{padding:clamp(18px,3vw,40px) clamp(16px,3.5vw,48px) calc(96px + env(safe-area-inset-bottom));max-width:1080px}
+.install ol{margin:4px 0 0;padding-left:1.3em}
+#inst-btn[hidden],#notify-btn[hidden],#install-box[hidden]{display:none}
+.view{display:none}.view.on{display:block}
+.tabs{display:none}
+@media(max-width:899px){.shell{grid-template-columns:minmax(0,1fr)}.side{display:none}
+ .tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+ .tabs a{flex-direction:column;gap:0;padding:10px 2px;font-size:14px;min-height:52px;position:relative;justify-content:center}
+ .tabs a[aria-current=page]{color:var(--red);font-weight:900}
+ .tabs .badge{position:absolute;top:4px;right:14%;margin:0}
+ .brand span{display:none}}
+@media(max-width:420px){.seg button{padding:0 9px}}
+/* 通用 */
+.card{border:1.5px solid var(--hair);padding:16px 18px}
+.rule{border-top:2px solid var(--line);padding-top:14px;margin-top:28px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 32px}
+@media(max-width:700px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.k{font-size:13px;font-weight:700;color:var(--mut);margin:16px 0 4px}
+label{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}
+label .small{font-weight:400}
+input,textarea,select{width:100%;font:16px/1.5 inherit;font-family:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);padding:9px 11px;border-radius:0}
+textarea{min-height:60px;resize:vertical}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button{font:700 15px/1 inherit;font-family:inherit;min-height:44px;padding:0 16px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button.pri{background:var(--ink);color:var(--bg)}
+button.red{background:var(--red);border-color:var(--red);color:#fff}
+button.link{border:0;padding:0 4px;min-height:36px;text-decoration:underline;font-weight:500}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 2px;min-height:44px;font-size:15px;cursor:pointer;border-bottom:1px solid var(--hair)}
+.opt input{width:20px;height:20px;margin-top:3px;flex:none;accent-color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{min-height:36px;font-size:14px;font-weight:500;padding:0 12px}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+/* 速查 */
+.cheat a{display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 10px;text-decoration:none;padding:10px 0;border-bottom:1px solid var(--hair)}
+.cheat a:hover b{text-decoration:underline}
+.cheat .num{font-size:22px;line-height:1.1}
+.cheat .num.r{color:var(--red)}
+.cheat .num{grid-row:span 2}.cheat span:not(.num){font-size:14px;color:var(--mut);grid-column:2}
+.today{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 6px}
+@media(max-width:600px){.today{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.today a{padding:10px;font-size:13px;line-height:1.4}.today b{font-size:26px}}
+.today a{display:block;text-decoration:none;border:1.5px solid var(--line);padding:14px 16px}
+.today b{display:block;font-family:"Helvetica Neue",Arial,sans-serif;font-stretch:112%;font-size:34px;line-height:1.1}
+.today a.hot{border-color:var(--red)}.today a.hot b{color:var(--red)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--hair);font-size:15px}
+thead th{border-bottom:2px solid var(--line);font-size:13px;color:var(--mut)}
+td:first-child{font-weight:700;white-space:nowrap}
+@media(max-width:600px){.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--hair)}.stack td{border:0;padding:2px 0}}
+/* 提问 */
+.gen{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:28px;margin-top:14px}
+@media(max-width:860px){.gen{grid-template-columns:minmax(0,1fr)}}
+.out{background:var(--soft);border-top:5px solid var(--red);padding:18px;align-self:start;position:sticky;top:76px}
+@media(max-width:860px){.out{position:static}}
+.out pre{white-space:pre-wrap;font:15px/1.75 "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;margin:0 0 14px;max-height:60vh;overflow:auto}
+.warn{border-left:4px solid var(--red);padding:8px 12px;background:var(--bg);margin:0 0 12px;font-size:14px}
+.warn[hidden]{display:none}
+/* 方法库 */
+.lib{display:grid;grid-template-columns:260px minmax(0,1fr);gap:28px}
+.lib-list{position:sticky;top:76px;align-self:start;max-height:calc(100vh - 96px);overflow:auto}
+.lib-list a{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:9px 8px;text-decoration:none;font-size:15px;border-bottom:1px solid var(--hair)}
+.lib-list a[aria-current=true]{background:var(--soft);box-shadow:inset 3px 0 0 var(--red);font-weight:700}
+.lib-list .num{font-size:16px}
+.lib-list .grp{font-size:12px;font-weight:700;color:var(--mut);margin:16px 0 4px}
+.back{display:none}
+@media(max-width:860px){.lib{grid-template-columns:minmax(0,1fr)}.lib-list{position:static;max-height:none}
+ .lib.detail .lib-list{display:none}.lib:not(.detail) .lib-body{display:none}.back{display:inline-flex}}
+.mh{display:flex;gap:16px;align-items:flex-start;border-bottom:2px solid var(--line);padding-bottom:12px;margin-bottom:6px}
+.mh .num{font-size:64px;line-height:.85}
+.mh .num.r{color:var(--red)}
+ol.steps{margin:0;padding-left:1.3em}
+.ex{display:grid;gap:6px}
+.ex div{padding:10px 12px;background:var(--soft);font-size:15px}
+.ex .bad::before{content:"差　";color:var(--red);font-weight:900}
+.ex .good::before{content:"好　";color:var(--ok);font-weight:900}
+.tpl{background:var(--soft);border-left:4px solid var(--ink);padding:12px 14px}
+.tpl p{white-space:pre-wrap;font-size:15px;margin-bottom:10px}
+.trap{margin-top:14px;padding:10px 12px;border:1.5px dashed var(--red);font-size:15px}
+.trap b{color:var(--red)}
+.pager{display:flex;justify-content:space-between;gap:8px;margin-top:24px;border-top:1px solid var(--hair);padding-top:12px}
+.pager a{text-decoration:none;font-weight:700;font-size:14px;padding:8px 0}
+/* 工具 */
+.big{font-family:"Helvetica Neue",Arial,sans-serif;font-stretch:112%;font-weight:800;font-size:clamp(52px,8vw,88px);line-height:1;display:block}
+.verdict{font-weight:700;font-size:17px;margin-top:8px}
+.verdict.bad{color:var(--red)}.verdict.ok{color:var(--ok)}
+.meter{height:12px;background:var(--hair);margin-top:12px}.meter i{display:block;height:100%;background:var(--red);transition:width .3s}
+/* 记录 */
+.rtabs{display:flex;border-bottom:2px solid var(--line);margin:14px 0}
+.rtabs button{border:0;min-height:44px;padding:0 16px;font-size:16px}
+.rtabs button[aria-selected=true]{background:var(--ink);color:var(--bg)}
+.filters{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:600px){.filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.filters input{grid-column:1/-1}}
+.stats{display:flex;flex-wrap:wrap;gap:6px 26px;margin:8px 0 14px}
+.stats div{font-size:13px;color:var(--mut)}.stats b{display:block;font-size:26px;color:var(--ink);font-family:"Helvetica Neue",Arial,sans-serif;font-stretch:112%;line-height:1.15}
+.rec{border-bottom:1px solid var(--hair)}
+.rec>summary{list-style:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 4px;cursor:pointer;min-height:44px}
+.rec>summary::-webkit-details-marker{display:none}
+.rec>summary .t{font-weight:700}
+.rec>summary .m{font-size:13px;color:var(--mut);grid-column:1/-1}
+.rec[open]>summary{background:var(--soft)}
+.rec .body{padding:6px 4px 16px}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border:1.5px solid var(--line);white-space:nowrap;align-self:start}
+.tag.r{background:var(--red);border-color:var(--red);color:#fff}
+.tag.g{background:var(--ok);border-color:var(--ok);color:#fff}
+.newbox{border:1.5px solid var(--line);padding:4px 16px 16px;margin-bottom:16px}
+.newbox[hidden]{display:none}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 18px}
+.empty{padding:28px 0;color:var(--mut)}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+.toast.on{opacity:1}
+/* 练习 */
+.dots{font-style:normal;font-weight:400;font-size:11px;letter-spacing:1px;color:var(--red);margin-left:6px;white-space:nowrap}
+.dots .o,.cheat b .dots span.o{color:var(--hair);font-size:11px}
+.lstat{display:flex;flex-wrap:wrap;gap:8px 32px;margin:16px 0}
+.lstat div{font-size:13px;color:var(--mut)}.lstat b{display:block;font-family:"Helvetica Neue",Arial,sans-serif;font-stretch:112%;font-size:34px;line-height:1.1;color:var(--ink)}
+.qcard{border:2px solid var(--line);padding:18px 20px;margin-top:18px}
+.qcard .qh{font-size:13px;color:var(--mut);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.qcard h3{font-size:19px;margin:6px 0 10px}
+.choice{display:grid;gap:8px;margin-top:10px}
+.choice button{text-align:left;font-weight:500;line-height:1.5;padding:10px 14px;min-height:48px}
+.choice button.right{background:var(--ok);border-color:var(--ok);color:#fff}
+.choice button.wrong{background:var(--red);border-color:var(--red);color:#fff}
+.rate{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.rate button.sug{outline:3px solid var(--red);outline-offset:2px}
+.ai{white-space:pre-wrap;background:var(--soft);border-left:4px solid var(--red);padding:10px 14px;margin-top:10px;font-size:15px}
+.ai:empty{display:none}
+.mgrid a,.mgrid div.r{display:grid;grid-template-columns:30px minmax(0,1fr) 110px 86px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--hair);text-decoration:none;font-size:15px}
+.bar5{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}.bar5 i{height:8px;background:var(--hair)}.bar5 i.on{background:var(--red)}
+.mgrid .st{font-size:13px;color:var(--mut);text-align:right}
+@media(max-width:600px){.mgrid a{grid-template-columns:26px minmax(0,1fr) 70px}.mgrid .st{grid-column:2/-1;text-align:left}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+<a class="brand" href="#home"><i></i>提问与筛选<span>系统</span></a>
+<div class="seg" role="group" aria-label="场景" id="seg"></div>
+</header>
+
+<div class="shell">
+<nav class="side" aria-label="主导航" id="side"></nav>
+<main>
+
+<!-- 速查 -->
+<section class="view" id="v-home">
+<h1>问得准，筛得严</h1>
+<p class="mut">十四招一屏看完。点任意一招看详细教程；右上角切换场景，所有例子跟着换。</p>
+<div class="today" id="today"></div>
+<div class="grid2 rule">
+<div><h2>提问七招</h2><p class="small">让AI给出配得上你的答案</p><div class="cheat" id="cheat-a"></div></div>
+<div><h2>筛选七关</h2><p class="small">不被看起来很专业的错话带偏</p><div class="cheat" id="cheat-f"></div></div>
+</div>
+<div class="rule"><h2>按代价决定用多少招</h2><p class="small">看的不是时间多少，而是错了要付多大代价、能不能撤回。</p>
+<table class="stack"><thead><tr><th>档位</th><th>典型问题</th><th>用哪些</th></tr></thead><tbody id="tiers"></tbody></table></div>
+<div class="rule"><h2>长期练习</h2><p class="small">你和高手之间的差距，大部分是练习量的差距。</p><div class="grid2" id="practice"></div></div>
+<div class="rule install" id="install-box"><h2>装到手机主屏幕</h2><p class="small">装好后像普通App一样从图标打开，全屏显示，没网也能用。</p>
+<div class="grid2"><div><h3>iPhone</h3><ol><li>用 <b>Safari</b> 打开这个网址（微信里打开的要先点右上角“在浏览器打开”）。</li><li>点底部的分享按钮。</li><li>选“添加到主屏幕”，再点“添加”。</li></ol></div>
+<div><h3>安卓</h3><ol><li>用 Chrome、Edge 或手机自带浏览器打开这个网址。</li><li>点下面的按钮，或浏览器菜单里的“安装应用”或“添加到主屏幕”。</li></ol><button type="button" class="pri" id="pwa-btn" hidden style="margin-top:8px">安装到手机</button></div></div>
+<p class="small" style="margin-top:10px">记录只保存在这台设备上。换手机或清理浏览器之前，先到“记录”页点“导出备份”。</p></div>
+<div class="rule"><h2>每周复盘清单</h2><p class="small">打勾状态只保存在这个浏览器里。</p><div id="week"></div><div class="row" style="margin-top:10px"><button type="button" id="w-reset">新的一周，清空打勾</button></div></div>
+</section>
+
+<!-- 提问 -->
+<section class="view" id="v-ask">
+<h1>提问生成器</h1>
+<p class="mut">填约束、勾招式，右边实时拼好提示词。每一格只写事实和数字，不写你倾向的结论。用完可以存进记录，以后回头查。</p>
+<div class="gen">
+<form id="gform" onsubmit="return false">
+<label for="g-q">你想问的问题</label><textarea id="g-q"></textarea>
+<label for="g-who">我是谁 <span class="small">身份、经验</span></label><input id="g-who">
+<label for="g-sit">我在什么处境 <span class="small">现在的情况、已有进度</span></label><textarea id="g-sit"></textarea>
+<label for="g-res">我有什么资源 <span class="small">钱、人、关系、技能</span></label><input id="g-res">
+<label for="g-time">我有多少时间 <span class="small">能投入多少、期限多久</span></label><input id="g-time">
+<label for="g-risk">我最不能承受什么 <span class="small">具体金额或后果</span></label><input id="g-risk">
+<div class="k">附加招式</div><div id="g-opts"></div>
+<div class="row" style="margin-top:12px"><button type="button" id="g-demo">填入示例</button><button type="button" id="g-clear">清空</button></div>
+</form>
+<div class="out" aria-live="polite">
+<div class="warn" id="g-warn" hidden></div>
+<pre id="g-out"></pre>
+<div class="row"><button class="red" type="button" id="g-copy">复制提示词</button><button type="button" id="g-save">存进提问记录</button><span class="small" id="g-count"></span></div>
+</div>
+</div>
+</section>
+
+<!-- 方法库 -->
+<section class="view" id="v-methods">
+<div class="lib" id="lib">
+<div class="lib-list">
+<input id="m-search" type="search" placeholder="搜索方法，如：代价、反问" aria-label="搜索方法">
+<div id="m-list"></div>
+</div>
+<article class="lib-body" id="m-body"></article>
+</div>
+</section>
+
+<!-- 练习 -->
+<section class="view" id="v-learn">
+<h1>练习</h1>
+<p class="mut">每天练3题。练对了，这一招隔几天再出现；练错了，明天再来。改写题没有唯一答案，对照参考答案，或复制给 Claude 点评，再给自己打分。</p>
+<div class="lstat" id="l-stat"></div>
+<div class="row" id="l-start"></div>
+<div id="l-card"></div>
+<div class="rule"><h2>掌握程度</h2><p class="small">5格满就是掌握了。点任意一招，单独练它。</p><div class="mgrid" id="l-grid"></div></div>
+</section>
+
+<!-- 工具 -->
+<section class="view" id="v-tools">
+<h1>工具</h1>
+<p class="mut">拿到一个结论先体检；想验证一个判断，先算样本够不够。</p>
+<div class="rule" id="exam">
+<h2>信息体检</h2>
+<p class="small">拿到一条AI建议、一篇文章或一句“大家都这么说”时，逐项打勾。</p>
+<label for="e-text">要检查的内容 <span class="small">只是方便你对照，不会发送到任何地方</span></label>
+<textarea id="e-text" placeholder="例如：这个品牌去年开了500家店，说明加盟很赚钱，你要赶紧交加盟费锁定区域。"></textarea>
+<div id="e-list" style="margin-top:8px"></div>
+<div class="verdict" id="e-verdict"></div>
+<div class="meter" aria-hidden="true"><i id="e-meter" style="width:0"></i></div>
+<div class="row" style="margin-top:10px"><button type="button" id="e-reset">重新检查</button><button type="button" id="e-log">把结论记进判断底稿</button></div>
+</div>
+<div class="rule">
+<h2>小实验样本计算器</h2>
+<p class="small">只试几次就下结论，差的那一两次很可能只是运气。</p>
+<div class="grid2">
+<div>
+<label for="x-n">每组试多少次 <span class="small">邮件、简历、顾客、尝试</span></label><input id="x-n" type="number" min="1" step="1" value="20" inputmode="numeric">
+<label for="x-p">预计成功率（%） <span class="small" id="x-hint"></span></label><input id="x-p" type="number" min="0.1" step="0.1" value="3" inputmode="decimal">
+<div class="k">实验四条规矩</div>
+<ol class="steps"><li>一次只改一个变量。</li><li>开始前写下预期：哪组赢，赢多少。</li><li>两组同一时间段做。</li><li>到期就看结果，不中途改规则。</li></ol>
+</div>
+<div aria-live="polite">
+<div class="k">每组预计成功次数</div>
+<span class="big" id="x-out">0.6</span>
+<div class="verdict" id="x-verdict"></div>
+<p id="x-tip" style="margin-top:8px"></p>
+<p class="small">经验法则：每组至少预计10次成功，比较才开始有意义。这不是严格的统计检验。</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 记录 -->
+<section class="view" id="v-records">
+<h1>记录</h1>
+<p class="small" id="j-status">正在连接保存位置…</p>
+<div class="rtabs" role="tablist"><button type="button" role="tab" data-rt="judge" aria-selected="true">判断底稿</button><button type="button" role="tab" data-rt="prompt" aria-selected="false">提问记录</button></div>
+<div id="rt-judge">
+<div class="row" style="margin-bottom:12px"><button class="pri" type="button" id="j-new">＋ 新增一条判断</button><button type="button" id="j-copyall">复制全部为文字</button><button type="button" id="notify-btn" hidden>开启到期提醒</button><button type="button" id="bk-out">导出备份</button><button type="button" id="bk-in">导入备份</button><input type="file" id="bk-file" accept=".json,application/json" hidden></div>
+<form class="newbox" id="jform" hidden onsubmit="return false">
+<div class="fgrid">
+<div><label for="j-what">我判断了什么</label><textarea id="j-what"></textarea></div>
+<div><label for="j-why">依据是什么</label><textarea id="j-why"></textarea></div>
+<div><label for="j-exp">预期会发生什么</label><textarea id="j-exp"></textarea></div>
+<div><label for="j-area">属于哪类</label><select id="j-area"></select>
+<label for="j-src">主要信息来源</label><select id="j-src"><option>AI给的</option><option>官方数据或原始文件</option><option>直接相关的真人</option><option>专业人士</option><option>文章、课程或别人说的</option><option>自己的观察或经验</option></select></div>
+<div><label for="j-date">什么时候验证</label><input id="j-date" type="date">
+<label for="j-conf">当时有多确定</label><select id="j-conf"><option value="50">50%（拿不准）</option><option value="70" selected>70%（比较有把握）</option><option value="90">90%（很确定）</option></select></div>
+</div>
+<div class="row" style="margin-top:12px"><button class="pri" type="button" id="j-add">记下</button><button type="button" id="j-cancel">取消</button></div>
+</form>
+<div class="stats" id="j-stats"></div>
+<div class="filters"><input type="search" id="j-q" placeholder="搜索判断、依据、复盘" aria-label="搜索判断"><select id="j-fa" aria-label="按类别筛选"></select><select id="j-fs" aria-label="按状态筛选"><option value="">全部状态</option><option value="due">到期待复盘</option><option value="open">待验证</option><option value="done">已复盘</option><option value="wrong">判断错了的</option></select></div>
+<div id="j-log"></div>
+</div>
+<div id="rt-prompt" hidden>
+<div class="filters"><input type="search" id="p-q" placeholder="搜索问题、提示词、收获" aria-label="搜索提问"><select id="p-fa" aria-label="按场景筛选"></select><select id="p-fs" aria-label="按状态筛选"><option value="">全部</option><option value="noted">写了收获的</option><option value="todo">还没写收获的</option></select></div>
+<div id="p-log"></div>
+</div>
+</section>
+
+</main>
+</div>
+<nav class="tabs" aria-label="主导航" id="tabs"></nav>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let tt;const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1700)};
+async function copyText(text){try{await navigator.clipboard.writeText(text);toast('已复制')}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();toast(ok?'已复制':'复制失败，请手动选中复制')}}
+document.addEventListener('click',e=>{const c=e.target.closest('[data-tpl]');if(c)copyText(c.dataset.tpl)});
+const today=()=>new Date().toISOString().slice(0,10);
+
+/* ===== 场景 ===== */
+const SC={
+trade:{n:'外贸',ph:{q:'例如：第一批客户应该从哪个渠道开发？',who:'例如：外贸新手，有本职工作，业余做',sit:'例如：还没有客户，产品单价3–5美元',res:'例如：每月预算约1000元，没有工厂关系',time:'例如：每天晚上2小时，6个月内要看到结果',risk:'例如：一次亏损超过3000元；接受账期'},
+ demo:{q:'开发第一批客户，我应该把时间优先投在展会名录挖掘、领英内容，还是海关数据回溯上？请排序。',who:'外贸新手，业余做外贸（示例，来自原文）',sit:'做中低端五金件，单价3–5美元，最小起订量500个，目前没有客户',res:'两个人，没有长期合作的工厂',time:'每天约3小时开发客户；目标6个月内拿下两个能返单的欧洲中小客户',risk:'不接受账期'},
+ rate:'冷开发信常见1–5%',jw:'例如：这款产品在欧洲有稳定的需求',jy:'例如：展会现场围观的人多；亚马逊德国站排名',je:'例如：发50封开发信，至少拿到2个样品询价'},
+biz:{n:'生意',ph:{q:'例如：我的小店要不要做外卖？',who:'例如：上班族，想做副业，没有开店经验',sit:'例如：还没选址，附近有两家同类店',res:'例如：存款约10万，家人周末能帮忙',time:'例如：周末两天和工作日晚上，一年内回本',risk:'例如：亏损超过5万；影响本职工作'},
+ demo:{q:'我想在住的小区附近开一家烘焙小店，应该先加盟、自己开，还是先摆摊试水？请排序。',who:'上班族，没有餐饮经验，会做简单的烘焙（示例）',sit:'小区约3000户，附近已有两家面包店，还没有选址',res:'存款约10万，家人能在周末帮忙看店',time:'周末两天加工作日晚上；希望一年内覆盖成本',risk:'亏损超过5万；影响本职工作'},
+ rate:'试吃或到店转化常见5–20%',jw:'例如：这家店开在地铁口能撑过第一年',jy:'例如：午高峰数过人流；同街两家店都开了三年以上',je:'例如：开业三个月，工作日日均营业额达到1500元'},
+life:{n:'生活',ph:{q:'例如：现在租房还是买房更合适？',who:'例如：上班族，第一次认真规划这件事',sit:'例如：月薪到手8000，房租2500，没有负债',res:'例如：有一点存款，家里能帮一部分',time:'例如：一年内想做出决定',risk:'例如：生活压缩到坚持不下去；本金亏损'},
+ demo:{q:'我想开始存钱，每个月的工资应该怎么分配？',who:'上班族，第一次认真规划存钱（示例）',sit:'月薪到手8000，房租2500，没有负债，每月有固定的人情和交通开销',res:'有一张信用卡，没有其他存款',time:'想在一年内存下第一笔应急金',risk:'生活被压缩到坚持不下去；任何本金亏损'},
+ rate:'因人因事而异，先按过去的记录估',jw:'例如：买一台跑步机我会坚持在家跑步',jy:'例如：过去两个月我每周跑步两次',je:'例如：买回来三个月，每周至少用三次'},
+path:{n:'人生',ph:{q:'例如：要不要换工作或者换城市？',who:'例如：工作5年的职员',sit:'例如：现在的工作稳定但成长慢，手上有一个新机会',res:'例如：存款够半年生活费，单身',time:'例如：两周内要给答复',risk:'例如：一年内失业；离家人太远'},
+ demo:{q:'有一家更大的公司给了我口头offer，薪资涨30%，但要搬到另一个城市。我该怎么判断？',who:'工作5年的职员（示例）',sit:'现在的工作稳定但成长慢；新公司已口头给了offer',res:'存款够半年生活费，单身，没有房贷',time:'两周内要给答复',risk:'一年内失业；离父母太远照顾不到'},
+ rate:'投简历回复率常见2–10%',jw:'例如：跳槽去这家公司，三年后我的选择会更多',jy:'例如：问过两位在职员工；这家公司近两年在扩张',je:'例如：一年内负责一个独立项目，薪资再涨一档'}
+};
+const KEYS=Object.keys(SC);
+let scene=store.get('tb-scene','trade');if(!SC[scene])scene='trade';
+$('seg').innerHTML=KEYS.map(k=>`<button type="button" data-scene="${k}">${SC[k].n}</button>`).join('');
+$('seg').addEventListener('click',e=>{const b=e.target.closest('[data-scene]');if(!b)return;scene=b.dataset.scene;store.set('tb-scene',scene);applyScene();toast('场景：'+SC[scene].n)});
+
+/* ===== 方法数据 ===== */
+const M=[
+{id:'a1',g:'a',t:'要判断依据，不要答案',one:'问“该看哪几个维度”，不问“对不对”',w:'不要问“这个值不值、合不合理”，而是问“判断这件事该看哪几个维度、每个维度需要什么信息、我还缺哪些”。',y:'答案只能用一次，判断框架下次还能用。每个维度你都能自己核对，不用把判断交出去。',s:['把问题里的“是不是、好不好、值不值”圈出来','改写成“判断X应该看哪几个维度”','让AI列出每个维度需要的信息和去哪里拿','自己标出哪些已有、哪些缺少','先补齐缺的信息，再自己下结论'],
+ ex:{trade:['工厂报价2.8元一个，合理吗？','判断一个出厂报价是否合理，应该看哪几个维度？每个维度我需要什么信息才能自己判断？按重要性排序。'],biz:['这个铺面月租8000元，贵不贵？','判断一个铺面的租金值不值，应该看哪几个维度？每个维度我需要什么信息才能自己判断？'],life:['这个私教课值得买吗？','判断一门私教课值不值得买，应该看哪几个维度？每个维度我需要掌握什么信息？'],path:['我该不该跳槽去这家公司？','判断一份新工作值不值得去，应该看哪几个维度？每个维度我需要什么信息，现在缺哪些？']},
+ tpl:'我想判断【　　】。请不要直接给结论，告诉我：\n1. 判断这件事应该看哪几个维度（按重要性排序）\n2. 每个维度需要哪些信息、可以去哪里拿到\n3. 哪个维度最容易被新手忽略',trap:'AI列的维度也可能漏项。追问一句：“一个在这方面做了十年的人，还会看哪些你没列出来的？”'},
+{id:'a2',g:'a',t:'补齐约束条件五件套',one:'我是谁 / 处境 / 资源 / 时间 / 最不能承受',w:'每次提问交代清楚：我是谁、我在什么处境、我有什么资源、我有多少时间、我最不能承受什么。',y:'没有约束的问题只能换来“标准答案”，而标准答案默认你资源充足。能承受30万试错的人和只能承受3万的人，拿到同一套建议，一个变成机会，一个变成事故。',s:['用“提问”页的生成器逐格填写','每一格写事实和数字，不写感受','“最不能承受”写成具体金额或后果','不知道就写“不知道”，不要编'],
+ ex:{trade:['怎么开发欧美客户？','我是业余做外贸的新手，没有工厂资源，每月预算约1000元，目标6个月内拿到第一个能返单的欧洲小客户，不接受账期。在这些条件下，展会名录、领英内容、海关数据怎么排序？每种最可能败在哪一步？'],biz:['怎么开一家奶茶店？','我有本职工作，存款约10万，周末能投入两天，没有餐饮经验，最不能承受亏损超过5万。在这些条件下，加盟、自营小店、摆摊试水怎么排序？每种最可能败在哪一步？'],life:['怎么存钱？','我月薪到手8000，房租2500，每月有固定的人情和交通开销，最不能承受生活被压缩到坚持不下去。给三种存钱方式排序，并说明每种最可能在哪一步坚持不下去。'],path:['我要不要考研？','我28岁，工作4年，存款够脱产一年，最不能承受两年后既没学历也没工作经验。脱产考研、在职读、不读继续工作三条路怎么排序？每条最可能败在哪一步？']},
+ tpl:'背景：我是【　】，处境是【　】，资源有【　】，时间是【　】，最不能承受【　】。\n在这些限制下，【问题】？请给出排序，并说明每种做法在我的条件下最可能败在哪一步。',trap:'约束里不要夹带倾向。写了“我觉得这个很有潜力”，AI就会帮你证明它有潜力。生成器会自动提醒你。'},
+{id:'a3',g:'a',t:'主动要反面（事前验尸）',one:'假设已经失败了，倒推崩在哪一步',w:'AI给出方案后追问：站到反对立场，给三条最强的反驳理由，并说明在真实执行中最可能崩在哪一步。',y:'模型天然倾向于让你满意，你不要求，它很少主动泼冷水。“事前验尸”是决策研究里的成熟方法：先假设事情失败了或你后悔了，再倒推原因，比问“好不好”更容易暴露风险。',s:['先让AI给方案','新起一句：假设一年后它失败了或我后悔了','让AI写出变糟的经过，具体到哪一步','对每个失败点问：事前能看到什么信号','把信号写进计划，当中途检查点'],
+ ex:{trade:['这个方案可行吗？','假设一年后这个方案失败了，请写出最可能的失败经过，具体到哪一步，以及每一步事前能看到的预警信号。'],biz:['我想在小区门口开一家烘焙店，你觉得怎么样？','假设这家店一年后关门了，请写出最可能的经过，具体到哪一步出问题，以及开业前我就能检查的信号。'],life:['我打算买一辆新车代步，帮我看看。','假设买车一年后我后悔了，最可能是因为什么？请写出后悔的经过，以及现在就能先检查的信号。'],path:['我想辞职去做自由职业。','假设辞职一年后我想回去上班，最可能是哪一步出了问题？哪些信号我辞职前就能先检验？']},
+ tpl:'假设一年后这件事彻底失败了（或者我后悔了）。请站在反对者的立场：\n1. 给出三条最强的反驳理由（每条都要能用一个事实或数据检验）\n2. 写出最可能的失败经过，具体到哪一步\n3. 每个失败点事前能看到什么信号',trap:'AI的反驳常常很空泛，比如“竞争激烈”“风险较大”。要求每条反驳都必须能用一个事实或数据检验，空话会少很多。'},
+{id:'a4',g:'a',t:'让它先反问你',one:'先问我三个关键信息，再回答',w:'复杂问题开头加一句：在回答之前，先问我三个你认为最关键、但我还没提供的信息。',y:'这一招会逼出你的盲区。很多时候AI问的三个问题你自己也答不上，那一刻你就知道：你缺的不是方案，而是对自己情况最基本的几个数字和事实的掌握。',s:['在问题开头加上反问指令','认真读AI问的三个问题','答得上的照实回答','答不上的记进待查清单，先去查','查清楚之后再回来继续'],
+ ex:{trade:['帮我做一个开发客户的计划。','在帮我做开发客户计划之前，请先问我三个你认为最关键、但我还没提供的信息。'],biz:['帮我做一份开店预算。','在帮我做开店预算之前，请先问我三个最关键、但我还没提供的信息。'],life:['帮我规划一次带父母的旅行。','在规划之前，请先问我三个你认为最关键、但我还没说的信息。'],path:['帮我规划未来五年。','在帮我规划未来五年之前，请先问我三个你认为最关键、但我还没说的信息。']},
+ tpl:'在回答之前，请先问我三个你认为最关键、但我还没有提供的信息。等我回答之后，再给出你的建议。',trap:'不要为了让对话继续就随便编一个答案。不知道就写“不知道”，并要求AI按不确定的情况给建议。'},
+{id:'a5',g:'a',t:'追问到可执行细节',one:'明早九点，能不能照着做',w:'判断一条建议有没有用，标准只有一个：明天早上九点，我能不能照着做。',y:'大部分人停在“要做好客户维护”“要多陪家人”这种正确的废话上。AI能被追问到动作、时间、话术和判断标准这一层，只是你得追。',s:['看到抽象建议就追问“具体一点”','追到动作、时间、话术、判断标准四项齐全','让它给一个能直接套用的模板','自问：明早九点能直接开始吗？'],
+ ex:{trade:['要做好客户分层。','把过去两年成交的客户按返单次数和毛利率画成四象限，今天下午五点前完成；给右上角那一格每人发一封节前问候，带上他去年最后一次下单的型号。'],biz:['要做好老客户维护。','今晚把过去三个月消费两次以上的客人拉一张表；周五前给消费最多的二十人每人发一条消息，附上他们上次点过那款的新品试吃券。'],life:['要多陪陪家人。','每周日晚上七点给爸妈打一次视频电话，至少二十分钟；每月第一个周六回家吃饭，提前一周定好。'],path:['要提升核心竞争力。','未来三个月，每周二、四晚上八点到十点学数据分析；每月末用工作里的一份真实数据做一份分析，发给主管看。']},
+ tpl:'把这条建议拆到我明天就能执行的程度，包括：\n1. 具体动作（第一步做什么）\n2. 需要多少时间\n3. 要用的话术或模板\n4. 怎么判断我做对了',trap:'细节越具体，越可能是AI编的，比如“这样成功率能到80%”。数字类细节要单独核实（见第7关）。'},
+{id:'a6',g:'a',t:'同一个问题换三个身份问',one:'我 / 对方 / 旁观者（后两个是推测）',w:'同一件事分别用三个身份各问一遍：你自己、和这件事直接相关的对方、一个旁观的过来人或竞争者。',y:'视角切换是最基础的认知升级手段。“我该怎么开口”和“站在对方的位置，他真正在意什么、什么样的开口会让他反感”，后者能拿到前者给不了的东西。',s:['先用自己的身份问','再让AI扮演对方回答','再让它扮演过来人或竞争者','对比三个答案的冲突点','把冲突点当成要去验证的假设'],
+ ex:{trade:['我该怎么跟进这个客户？','作为一个同时收到五家报价的采购经理，我内心真实的排序逻辑是什么？什么样的跟进会让我觉得烦？'],biz:['我的产品该怎么定价？','作为一个在这条街上能找到三家同类店的顾客，我会怎么选？什么样的价格会让我掉头就走？'],life:['我该怎么跟室友谈分摊水电费？','站在室友的角度，她最在意的是什么？我用什么方式开口会让她觉得被冒犯？'],path:['我该怎么跟老板提加薪？','站在老板的角度，他决定给不给加薪时真实在考虑什么？什么样的开口方式会让他反感？']},
+ tpl:'请分三段回答同一个问题【　　】：\n1. 站在我自己的角度\n2. 站在【对方，比如客户、老板、家人】的角度：他真正在意什么，什么做法会让他反感\n3. 站在一个旁观的过来人或竞争者的角度\n第2、3段请标注为“推测”。',trap:'AI扮演的对方说的是推测，不是事实，而且听起来很像真的。用它来准备话术和生成假设，再去问真人、看真实反应。'},
+{id:'a7',g:'a',t:'往上提一层，往下压一层',one:'上问目的，下问因果链',w:'往上提一层问目的：我为什么要解决这个问题？真正想要的是什么？有没有别的路？往下压一层问机制：背后的因果链是什么？条件变了还成立吗？',y:'往上提，防止在错的赛道上跑出好成绩。往下压，经验才能迁移：停在现象层的人，换个市场、换份工作、换段关系就要从头再来。',s:['写下当前的问题','往上问：解决它是为了什么，有没有别的路','往下问：背后的因果链是什么','再问：哪个条件一变，因果链就不成立'],
+ ex:{trade:['怎么把开发信回复率提高？','我想提高回复率，真正目的是拿到第一批询盘。除了改开发信，还有哪些路径更快？回复率低背后的因果链是什么？'],biz:['怎么让店里短视频播放量更高？','我想提高播放量，真正目的是让更多人到店。除了拍视频，还有哪些路径更快带来客人？播放量低背后的原因链是什么？'],life:['怎么每天早起一小时？','我想早起，真正想要的是每天有一段自己的时间。除了早起还有别的路径吗？我起不来背后的原因链是什么？'],path:['怎么尽快拿到更高的职称？','我想拿职称，真正想要的是收入提高和更多选择。还有别的路吗？在我的行业里，职称和收入之间的因果链真的成立吗？']},
+ tpl:'关于【问题】：\n往上一层：我解决这个问题真正想要的是什么？有没有别的路径也能达到？\n往下一层：这个现象背后的因果链是什么？哪些条件一变，结论就不成立了？',trap:'往上提容易越提越虚，提到“我想要自由”就停不下来。提一到两层就够，停在还能落地行动的那一层。'},
+{id:'f1',g:'f',t:'拆成事实、推断、立场',one:'哪句能核实，哪句是推出来的，哪句是想让你信的',q:'我能分清这段话里的事实、推断和立场',w:'事实可以被独立核实；推断是从事实推出来的；立场是说话人希望你相信的。三者混在一起说时，最容易骗人。',
+ exf:{trade:'“这个市场今年需求下滑了15%（事实），所以低价是唯一出路（推断），你应该赶紧降价抢单（立场）。”需求下滑可能是真的，“唯一出路”是假的，“赶紧降价”对说话人有利。',biz:'“这个品牌去年开了500家店（事实），说明加盟很赚钱（推断），你要赶紧交加盟费锁定区域（立场）。”开得多不等于每家都赚钱，“赶紧交钱”对招商的人最有利。',life:'“这款面霜卖出了一千万瓶（事实），所以效果一定好（推断），现在下单买三送一（立场）。”卖得多说明营销做得好，不能证明对你有效。',path:'“AI替代了很多岗位（事实），所以你的行业要完了（推断），赶紧报我们的转行课（立场）。”前半句可能是真的，后两句是在卖课。'},
+ tpl:'请把下面这段话逐句标注为：事实（能独立核实）、推断（从事实推出）、立场（说话人希望我相信的）。对每个推断，说明它是否必然成立、还有没有其他可能。\n\n【粘贴内容】'},
+{id:'f2',g:'f',t:'能不能被证伪',one:'什么情况下它会被证明是错的',q:'它说清楚了在什么情况下会被证明是错的',w:'一个结论如果无论发生什么都成立，那它大概率什么都没说。“要坚持长期主义”“选择比努力重要”，你没法反驳，因为它们不承担任何风险。有价值的判断，一定是可以被打脸的。',
+ exf:{trade:'“欧洲小客户在圣诞前四周集中补单，所以十月中旬是最佳跟进窗口。”可以被验证，也可能被证明是错的，所以它才值钱。',biz:'“做生意要用心”什么都没说；“工作日下午三点到五点是这条街客流最低的时段”可以站在门口数人头验证。',life:'“钱要花在刀刃上”什么都没说；“我每月外卖花费超过1500元”可以翻账单验证。',path:'“选择比努力重要”永远正确；“在我们公司，跨部门转岗的人两年内升职比例更高”可以去找数据验证。'},
+ tpl:'这个结论在什么情况下会被证明是错的？请给出一个可以观察到的、能推翻它的结果。'},
+{id:'f3',g:'f',t:'看它有没有讲代价',one:'拿什么去换，付不付得起',q:'它讲了代价，而且这个代价我付得起',w:'只讲好处不讲代价的建议，一定被删掉了一半。现实里没有免费的策略。只讲收益的方案，一律按广告处理。',
+ exf:{trade:'降价能拿单，代价是毛利和以后的议价空间；做高端定制能提毛利，代价是交期和现金流。',biz:'“加盟能快速开店”，代价是加盟费、被锁定的供货价，以及经营的自主权。',life:'“买房比租房划算”，代价是首付的机会成本、每月的月供压力和换城市的灵活性。',path:'“辞职读MBA能转行”，代价是两年收入、学费，以及职业经历的中断。'},
+ tpl:'这条路的代价是什么？我要拿什么去换？以我现在的资源，这个代价我付得起吗？如果付不起，最坏会怎样？'},
+{id:'f4',g:'f',t:'对抗验证',one:'让它论证反方，再用独立来源核对',q:'我看过反方论证，并用至少一个独立来源核对过',w:'先让AI给出一个方案，再新开一个对话，让它站在完全相反的立场论证一遍。双方都承认的部分是相对可靠的地基；吵得最凶的地方，是真正的不确定区，只能靠你自己下注。自洽不等于正确。',
+ exf:{trade:'让AI论证“这个产品值得做”，再新开对话论证“这个产品不值得做”。',biz:'让AI论证“该开这家店”，再新开对话论证“不该开”。',life:'让AI论证“该买车”，再新开对话论证“不该买车”。',path:'让AI论证“该跳槽”，再新开对话论证“该留下”。'},
+ tpl:'（新开一个对话）请站在完全相反的立场，论证为什么【原结论】是错的。给出最强的论据，并说明需要什么证据才能判断谁对。',trap:'同一个模型跟自己辩论，两边都承认的部分，可能只是这个模型自己的偏见。真正的“硬骨头”还要用独立来源再核一遍：官方数据、原始文件、真人反馈、你自己的账单和记录。'},
+{id:'f5',g:'f',t:'让现实当终审',one:'拆成付得起的小实验，样本要够',q:'它能拆成我付得起的小实验，而且样本量够看出差别',w:'屏幕上得来的所有判断都只是假设。最好的筛选方式，是把它拆成成本很小的实验丢进现实里。代价可控的试错，是这个时代最有用的能力之一。',
+ exf:{trade:'它说这类客户吃这一套话术，你就挑客户分两组，一组老办法一组新办法，两周后看回复率。',biz:'想开烘焙店，先在周末市集摆两次摊，看哪几款卖得动、客人愿意付多少钱。',life:'想买跑步机，先办一个月健身卡，看自己一个月实际去了几次。',path:'想转行做设计，先接两个小单或做一个真实项目，看三个月后还愿不愿意做。'},
+ tpl:'请把【结论】拆成一个成本最低的现实验证：用多少钱、多长时间、做什么动作、看哪个指标、结果达到多少算通过。',trap:'样本太小会得出假结论。只试几次就下结论，好坏差的那一两次很可能只是运气。先用“工具”页的样本计算器估一下。',link:['#tools','打开样本计算器']},
+{id:'f6',g:'f',t:'写进判断底稿',one:'写下判断、依据、预期，到期复盘',q:'我把这个判断记进了判断底稿',w:'每做一个判断就写下来：判断了什么、依据是什么、预期结果是什么、什么时候验证。几个月后回头看，你会看到自己哪一类判断经常错，错在信息源、逻辑还是情绪。',
+ exf:{trade:'这份底稿会变成你的私人校准表。AI手里有公开知识，却没有你这几十次判断的对错记录。'},
+ tpl:'',link:['#records','去记一条']},
+{id:'f7',g:'f',t:'事实核查',one:'数字、法规、条款，回原始来源核对',q:'里面的数字、法规、条款，我都回原始来源核对过',add:1,w:'前六关查的是逻辑，这一关查事实，是对原文的补充。最贵的错往往是事实性的：外贸的编码、关税、认证；生意的证照、税务、合同；生活里的医疗、保险、贷款条款；人生大事里的政策、落户、社保规则。AI在这些地方常常一本正经地编造。',
+ exf:{trade:'AI说“这个产品出口欧盟只需要CE认证”，逻辑很顺，但漏了一项强制要求，货就可能被扣在港口。',biz:'AI说“开小吃店办个营业执照就行”，可能漏了食品经营方面的许可，开业后被查就得停业。',life:'AI给的药物用法、保险理赔条件或贷款利率，必须以医生、说明书和合同原文为准。',path:'AI说“某城市落户只需要社保满一年”，这类政策经常调整，必须以当地官方最新文件为准。'},
+ tpl:'请为你回答里的每一个数字、政策法规、合同或医疗法律相关的说法注明出处（机构名称和文件或页面名称）。给不出出处的，请标注“未核实”。',trap:'AI给出的出处也要点进去，确认它真的存在、真的这么写。'}
+];
+const MA=M.filter(m=>m.g==='a'),MF=M.filter(m=>m.g==='f');
+const numOf=m=>(m.g==='a'?MA:MF).indexOf(m)+1;
+
+/* ===== 导航与路由 ===== */
+const NAV=[['home','速查'],['ask','提问'],['learn','练习'],['methods','方法'],['tools','工具'],['records','记录']];
+const navHtml=NAV.map(n=>`<a href="#${n[0]}" data-nav="${n[0]}">${n[1]}${n[0]==='records'?'<span class="badge" data-due></span>':''}</a>`).join('');
+$('side').innerHTML=navHtml;$('tabs').innerHTML=navHtml;
+let curM='a1';
+function route(){
+  let h=location.hash.slice(1)||'home',v=h;
+  if(h.startsWith('m-')){v='methods';const id=h.slice(2);if(M.some(m=>m.id===id))curM=id}
+  if(!NAV.some(n=>n[0]===v))v='home';
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  document.querySelectorAll('[data-nav]').forEach(a=>{if(a.dataset.nav===v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  if(v==='methods'){$('lib').classList.toggle('detail',h.startsWith('m-'));renderMethod()}
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+
+/* ===== 速查 ===== */
+const TIERS=[['日常','查资料、了解概念、写消息或邮件初稿、小额消费','约束五件套 + 先反问（②④）'],['中等','定价、选市场、评估合作方、租房选址、谈加薪、报课','再加：要判断依据、要反面、追到可执行（①③⑤）；过第1–3关'],['重大','选定产品、开店、买房、换工作或城市、辞职、借钱、大额投资、签合同','七招全用，七关全过，尤其第5关小实验和第7关事实核查；记进判断底稿']];
+$('tiers').innerHTML=TIERS.map(t=>`<tr><td>${t[0]}</td><td>${t[1]}</td><td>${t[2]}</td></tr>`).join('');
+const cheat=(list,r)=>list.map((m,i)=>`<a href="#m-${m.id}"><span class="num ${r}">${i+1}</span><b>${esc(m.t)}${dots(m)}</b><span>${esc(m.one)}</span></a>`).join('');
+function renderCheat(){$('cheat-a').innerHTML=cheat(MA,'');$('cheat-f').innerHTML=cheat(MF,'r')}
+const PR=[['练输入源','你的判断力是被长期喂的东西塑造的。多读有数据、有论证、有反方意见的东西，大脑会养成“证据在哪”的反射。','每周读完一篇有数据和反方意见的长文，写一句：它最关键的证据是什么。'],['练表达','写作是最好的思维体检。写不下去的地方，就是没想清楚的地方。','每周写一篇只给自己看的复盘。'],['练归因','每次成功和失败（一笔生意、一次面试、一次谈话），都写清真实原因、判断错在哪一环。成了归自己、败了归环境，会悄悄毁掉经验。','结果出来24小时内，在判断底稿里复盘，“错在哪一步”必选一项。'],['练下注','判断力只在有代价时才成长。钱和时间真的投出去，大脑才会认真计算。','用小额真实投入去验证：寄一次样、摆一次摊、先租一个月、试做一个小项目。']];
+$('practice').innerHTML=PR.map((p,i)=>`<div><h3><span class="num">${i+1}</span>　${esc(p[0])}</h3><p>${esc(p[1])}</p><p class="small"><b>每周动作：</b>${esc(p[2])}</p></div>`).join('');
+const WK=['至少一个重要问题是用约束五件套问的','至少对一个结论做了反面论证或事实核查','读完一篇有数据和反方意见的长文','写了一篇给自己看的复盘','到期的判断都复盘了','新复盘每条都标了“错在哪一步”','做了一次有真实代价的小实验'];
+const ws=store.get('tb-week',[]);
+$('week').innerHTML=WK.map((w,i)=>`<label class="opt"><input type="checkbox" class="wc" ${ws[i]?'checked':''}><span>${esc(w)}</span></label>`).join('');
+$('week').addEventListener('change',()=>store.set('tb-week',[...document.querySelectorAll('.wc')].map(c=>c.checked)));
+$('w-reset').addEventListener('click',()=>{document.querySelectorAll('.wc').forEach(c=>c.checked=false);store.set('tb-week',[])});
+
+/* ===== 方法库 ===== */
+function renderMList(){
+  const q=$('m-search').value.trim().toLowerCase();
+  const hit=m=>!q||[m.t,m.one,m.w,m.y||'',m.tpl,m.trap||''].join(' ').toLowerCase().includes(q);
+  const grp=(list,name,r)=>{const xs=list.filter(hit);return xs.length?`<div class="grp">${name}</div>`+xs.map(m=>`<a href="#m-${m.id}" aria-current="${m.id===curM}"><span class="num" style="${r?'color:var(--red)':''}">${numOf(m)}</span><span>${esc(m.t)}</span></a>`).join(''):''};
+  const html=grp(MA,'提问七招','')+grp(MF,'筛选七关','r');
+  $('m-list').innerHTML=html||'<p class="empty">没有找到，换个词试试。</p>';
+}
+$('m-search').addEventListener('input',renderMList);
+function renderMethod(){
+  renderMList();
+  const m=M.find(x=>x.id===curM)||M[0];const i=M.indexOf(m);const sn=SC[scene].n;
+  const prev=M[i-1],next=M[i+1];
+  let ex='';
+  if(m.ex){const e=m.ex[scene];ex=`<div class="ex"><div class="bad">${esc(e[0])}</div><div class="good">${esc(e[1])}</div></div>`}
+  else{ex=`<div class="ex"><div>${esc((m.exf[scene]||m.exf.trade))}</div></div>`}
+  $('m-body').innerHTML=`<a class="back link" href="#methods" style="margin-bottom:8px">← 返回列表</a>
+<div class="mh"><span class="num ${m.g==='f'?'r':''}">${numOf(m)}</span><div><div class="small">${m.g==='a'?'提问七招':'筛选七关'}${m.add?' · 补充':''}</div><h1 style="margin:2px 0 4px">${esc(m.t)}</h1><p class="mut" style="margin:0">${esc(m.one)}</p></div></div>
+<div class="k">是什么</div><p>${esc(m.w)}</p>
+${m.y?`<div class="k">为什么有用</div><p>${esc(m.y)}</p>`:''}
+${m.s?`<div class="k">怎么做</div><ol class="steps">${m.s.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}
+<div class="k">${esc(sn)}的例子</div>${ex}
+${m.tpl?`<div class="k">模板</div><div class="tpl"><p>${esc(m.tpl)}</p><button type="button" data-tpl="${esc(m.tpl)}">复制模板</button></div>`:''}
+${m.trap?`<div class="trap"><b>坑：</b>${esc(m.trap)}</div>`:''}
+${m.link?`<div class="row" style="margin-top:14px"><a href="${m.link[0]}" style="font-weight:700">${esc(m.link[1])} →</a></div>`:''}
+<div class="row" style="margin-top:18px"><button type="button" class="pri" data-practice="${m.id}">练这一招（${Q[m.id].length}题）</button><span class="small">${esc(lvText(m))}</span></div>
+<div class="pager">${prev?`<a href="#m-${prev.id}">← ${esc(prev.t)}</a>`:'<span></span>'}${next?`<a href="#m-${next.id}" style="text-align:right">${esc(next.t)} →</a>`:'<span></span>'}</div>`;
+}
+
+/* ===== 提问生成器 ===== */
+const OPTS=[
+['basis','① 要判断依据，不要直接给答案',true,'请不要直接给结论。先告诉我：判断这件事应该看哪几个维度（按重要性排序）、每个维度需要什么信息、我目前缺哪些。'],
+['ask','④ 先反问我三个关键问题',true,'在回答之前，请先问我三个你认为最关键、但我还没提供的信息，等我回答后再继续。'],
+['counter','③ 主动要反面（事前验尸）',true,'给出建议后，请站到反对立场：给出三条最强的反驳理由，并假设一年后这个决定失败了或让我后悔了，说明在我的条件下最可能在哪一步出问题、事前能看到什么信号。'],
+['detail','⑤ 追问到可执行细节',false,'每条建议都要具体到我明天就能照着做：具体动作、需要多少时间、要用的话术或模板、怎么判断做对了。'],
+['roles','⑥ 换三个身份问',false,'请分别从三个角度回答：我自己、和这件事直接相关的对方（比如客户、老板、家人、伴侣）、一个旁观的过来人或竞争者。后两个角度请明确标注为“推测”。'],
+['layer','⑦ 往上提一层、往下压一层',false,'最后往上提一层：我解决这个问题真正想要的是什么，有没有别的路径也能到达？再往下压一层：这件事背后的因果链是什么，条件变了还成立吗？'],
+['fact','事实核查（第7关）',true,'凡是数字、价格、政策法规、合同条款、医疗或法律信息，请注明出处；给不出出处的，请标注“未核实”。']];
+$('g-opts').innerHTML=OPTS.map(o=>`<label class="opt"><input type="checkbox" id="o-${o[0]}" ${o[2]?'checked':''}><span>${o[1]}</span></label>`).join('');
+const F=['q','who','sit','res','time','risk'];
+const gs=store.get('tb-gen',null);
+if(gs){F.forEach(k=>{if(gs[k]!=null)$('g-'+k).value=gs[k]});OPTS.forEach(o=>{if(gs['o-'+o[0]]!=null)$('o-'+o[0]).checked=gs['o-'+o[0]]})}
+const BIAS=/(我觉得|我认为|我感觉|应该会|肯定|一定能|很有潜力|很好卖|爆款|稳赚|没问题|必须要)/;
+function build(){
+  const v={};F.forEach(k=>v[k]=$('g-'+k).value.trim());
+  const c=[['我是谁',v.who],['我的处境',v.sit],['我有的资源',v.res],['我能投入的时间',v.time],['我最不能承受的',v.risk]];
+  const L=['我的问题：'+(v.q||'（先在左边写下你的问题）'),'\n背景和约束条件：\n'+c.map(x=>'- '+x[0]+'：'+(x[1]||'（未填）')).join('\n')];
+  const add=OPTS.filter(o=>$('o-'+o[0]).checked).map(o=>o[3]);
+  if(add.length)L.push('\n回答要求：\n'+add.map((a,i)=>(i+1)+'. '+a).join('\n'));
+  $('g-out').textContent=L.join('\n');
+  const miss=c.filter(x=>!x[1]).map(x=>x[0]);const mm=Object.values(v).join(' ').match(BIAS);const w=[];
+  if(mm)w.push('你写了“'+mm[0]+'”。这是倾向，不是事实，AI会顺着它证明你是对的。改成可核实的事实，或者删掉。');
+  if(miss.length&&v.q)w.push('还缺：'+miss.join('、')+'。少一项约束，AI就会默认一个对你未必成立的条件。');
+  $('g-warn').hidden=!w.length;$('g-warn').innerHTML=w.map(esc).join('<br>');
+  $('g-count').textContent='约束 '+(5-miss.length)+'/5';
+  const s={};F.forEach(k=>s[k]=$('g-'+k).value);OPTS.forEach(o=>s['o-'+o[0]]=$('o-'+o[0]).checked);store.set('tb-gen',s);
+}
+$('gform').addEventListener('input',build);$('gform').addEventListener('change',build);
+$('g-demo').addEventListener('click',()=>{const d=SC[scene].demo;F.forEach(k=>$('g-'+k).value=d[k]);build();toast('已填入「'+SC[scene].n+'」示例')});
+$('g-clear').addEventListener('click',()=>{F.forEach(k=>$('g-'+k).value='');build()});
+$('g-copy').addEventListener('click',()=>copyText($('g-out').textContent));
+$('g-save').addEventListener('click',()=>{const q=$('g-q').value.trim();if(!q){toast('先写下你的问题');$('g-q').focus();return}
+  saveEntry({id:newId(),kind:'prompt',created:Date.now(),date:today(),area:SC[scene].n,q,prompt:$('g-out').textContent,note:''});toast('已存进提问记录')});
+
+/* ===== 场景应用 ===== */
+function applyScene(){
+  const s=SC[scene];
+  document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.scene===scene));
+  F.forEach(k=>$('g-'+k).placeholder=s.ph[k]);
+  $('x-hint').textContent=s.rate;
+  $('j-what').placeholder=s.jw;$('j-why').placeholder=s.jy;$('j-exp').placeholder=s.je;$('j-area').value=s.n;
+  renderMethod();
+}
+
+/* ===== 信息体检 ===== */
+$('e-list').innerHTML=MF.map((m,i)=>`<label class="opt"><input type="checkbox" class="ec"><span><b>${i+1}. ${esc(m.t)}</b>　${esc(m.q)}　<a href="#m-${m.id}" class="small">怎么查</a></span></label>`).join('');
+const es=store.get('tb-exam',{});if(es.text)$('e-text').value=es.text;const ecs=[...document.querySelectorAll('.ec')];(es.c||[]).forEach((v,i)=>{if(ecs[i])ecs[i].checked=v});
+function exam(){const n=ecs.filter(c=>c.checked).length;const v=$('e-verdict');$('e-meter').style.width=(n/7*100)+'%';
+ if(n<=2){v.className='verdict bad';v.textContent='通过 '+n+'/7：先别信，也别照做。'}
+ else if(n<=4){v.className='verdict bad';v.textContent='通过 '+n+'/7：当作假设，不能当作结论。先补齐没过的关。'}
+ else if(n<=6){v.className='verdict';v.textContent='通过 '+n+'/7：基本可信。重大决定请把剩下的关也过完。'}
+ else{v.className='verdict ok';v.textContent='通过 7/7：可以行动了。记进判断底稿，到期回头验证。'}
+ store.set('tb-exam',{text:$('e-text').value,c:ecs.map(c=>c.checked)})}
+$('exam').addEventListener('input',exam);$('exam').addEventListener('change',exam);
+$('e-reset').addEventListener('click',()=>{ecs.forEach(c=>c.checked=false);$('e-text').value='';exam()});
+$('e-log').addEventListener('click',()=>{const t=$('e-text').value.trim();location.hash='records';setRT('judge');$('jform').hidden=false;if(t)$('j-what').value=t.slice(0,300);$('j-why').value='信息体检通过 '+ecs.filter(c=>c.checked).length+'/7';$('j-what').focus()});
+
+/* ===== 样本计算器 ===== */
+function calc(){const n=Math.max(0,+$('x-n').value||0),p=Math.max(0,+$('x-p').value||0)/100,e=n*p;
+ $('x-out').textContent=e<10?e.toFixed(1):Math.round(e);const v=$('x-verdict');
+ if(e<5){v.className='verdict bad';v.textContent='看不出差别。两组差一两次，很可能只是运气。'}
+ else if(e<10){v.className='verdict';v.textContent='勉强能看出大差别，小差别看不出来。'}
+ else{v.className='verdict ok';v.textContent='样本量基本够，可以比较两组。'}
+ $('x-tip').textContent=e<10&&p>0?('按这个成功率，每组大约要试 '+Math.ceil(10/p)+' 次才够。做不到的话，换一个更快、更容易发生的指标：打开率、有没有回应、愿不愿意聊下去、有没有人问价。'):'';
+ store.set('tb-exp',{n:$('x-n').value,p:$('x-p').value})}
+const xs=store.get('tb-exp',null);if(xs){$('x-n').value=xs.n;$('x-p').value=xs.p}
+$('x-n').addEventListener('input',calc);$('x-p').addEventListener('input',calc);
+
+/* ===== 记录：存储 ===== */
+let logs=[],col=null,loaded=false,live=false;
+const newId=()=>'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+async function saveEntry(e){
+  if(col){try{await col.doc(e.id).set(e);if(!live){upsert(e)}}catch(err){toast('保存失败，请稍后再试')}}
+  else{upsert(e);store.set('tb-logs',logs)}
+}
+function upsert(e){const i=logs.findIndex(x=>x.id===e.id);i>=0?logs[i]=e:logs.push(e);renderRecords()}
+async function delEntry(id){
+  if(col){try{await col.doc(id).delete();if(!live){logs=logs.filter(x=>x.id!==id);renderRecords()}}catch(err){toast('删除失败')}}
+  else{logs=logs.filter(x=>x.id!==id);store.set('tb-logs',logs);renderRecords()}
+}
+function useLocal(msg){col=null;live=false;logs=store.get('tb-logs',[]).filter(l=>l.kind!=='progress');prog=normProg(store.get('tb-prog',null));$('j-status').textContent=msg;renderRecords();renderLearnAll()}
+const LOCAL='记录保存在这台设备上。换手机或清理浏览器前，先点“导出备份”。';
+const startStore=()=>{useLocal(LOCAL)};
+
+/* ===== 记录：判断底稿 ===== */
+const CAUSE=['信息源','逻辑','情绪','运气或外部变化'];
+const areaOpts=KEYS.map(k=>SC[k].n).concat('其他');
+$('j-area').innerHTML=areaOpts.map(a=>`<option>${a}</option>`).join('');
+$('j-fa').innerHTML='<option value="">全部类别</option>'+areaOpts.map(a=>`<option>${a}</option>`).join('');
+$('p-fa').innerHTML='<option value="">全部场景</option>'+KEYS.map(k=>`<option>${SC[k].n}</option>`).join('');
+function setRT(t){document.querySelectorAll('[data-rt]').forEach(b=>b.setAttribute('aria-selected',b.dataset.rt===t));$('rt-judge').hidden=t!=='judge';$('rt-prompt').hidden=t!=='prompt'}
+document.querySelector('.rtabs').addEventListener('click',e=>{const b=e.target.closest('[data-rt]');if(b)setRT(b.dataset.rt)});
+$('j-new').addEventListener('click',()=>{$('jform').hidden=!$('jform').hidden;if(!$('jform').hidden)$('j-what').focus()});
+$('j-cancel').addEventListener('click',()=>{$('jform').hidden=true});
+$('j-add').addEventListener('click',()=>{
+  const what=$('j-what').value.trim();if(!what){toast('先写下你判断了什么');$('j-what').focus();return}
+  saveEntry({id:newId(),kind:'judge',created:Date.now(),date:today(),what,why:$('j-why').value.trim(),area:$('j-area').value,src:$('j-src').value,exp:$('j-exp').value.trim(),due:$('j-date').value,conf:$('j-conf').value,actual:'',result:'',cause:'',lesson:''});
+  ['j-what','j-why','j-exp','j-date'].forEach(k=>$(k).value='');$('jform').hidden=true;toast('已记下');
+});
+const isJ=l=>(l.kind||'judge')==='judge';
+const isDue=l=>!l.result&&l.due&&l.due<=today();
+function renderJudge(){
+  const all=logs.filter(isJ).sort((a,b)=>(b.created||0)-(a.created||0));
+  const done=all.filter(l=>l.result),right=done.filter(l=>l.result==='对'),due=all.filter(isDue).length;
+  const errs={};done.filter(l=>l.cause).forEach(l=>errs[l.cause]=(errs[l.cause]||0)+1);const top=Object.entries(errs).sort((a,b)=>b[1]-a[1])[0];
+  $('j-stats').innerHTML=all.length?`<div><b>${all.length}</b>条判断</div><div><b>${done.length?Math.round(right.length/done.length*100)+'%':'—'}</b>正确率</div><div><b>${due}</b>到期待复盘</div><div><b>${top?esc(top[0]):'—'}</b>最常见错因</div>`:'';
+  document.querySelectorAll('[data-due]').forEach(b=>b.textContent=due||'');deskDue(due);
+  const q=$('j-q').value.trim().toLowerCase(),fa=$('j-fa').value,fs=$('j-fs').value;
+  const list=all.filter(l=>(!fa||l.area===fa)&&(!fs||(fs==='due'&&isDue(l))||(fs==='open'&&!l.result)||(fs==='done'&&l.result)||(fs==='wrong'&&(l.result==='错'||l.result==='部分对')))&&(!q||[l.what,l.why,l.exp,l.actual,l.lesson].join(' ').toLowerCase().includes(q)));
+  if(!all.length){$('j-log').innerHTML='<p class="empty">还没有记录。从你最近做的一个判断开始，哪怕很小。</p>';return}
+  if(!list.length){$('j-log').innerHTML='<p class="empty">没有符合条件的记录。</p>';return}
+  $('j-log').innerHTML=list.map(l=>{
+    const tag=l.result?`<span class="tag ${l.result==='对'?'g':'r'}">${esc(l.result)}</span>`:(isDue(l)?'<span class="tag r">该复盘了</span>':'<span class="tag">待验证</span>');
+    return `<details class="rec" data-id="${esc(l.id)}"><summary><span class="t">${esc(l.what)}</span>${tag}<span class="m">${esc(l.date)} · ${esc(l.area||'')} · 来源：${esc(l.src)} · 把握 ${esc(l.conf)}%${l.due?' · 验证日 '+esc(l.due):''}</span></summary>
+<div class="body"><p><b>依据：</b>${esc(l.why)||'（未填）'}<br><b>预期：</b>${esc(l.exp)||'（未填）'}</p>
+${l.result?`<p><b>实际：</b>${esc(l.actual)||'（未填）'}${l.cause?`<br><b>错在哪：</b>${esc(l.cause)}`:''}${l.lesson?`<br><b>下次怎么做：</b>${esc(l.lesson)}`:''}</p>`:''}
+<div class="k">复盘</div>
+<label>实际发生了什么</label><textarea class="r-actual">${esc(l.actual)}</textarea>
+<div class="fgrid"><div><label>判断结果</label><select class="r-result"><option value="">未定</option>${['对','部分对','错'].map(x=>`<option ${l.result===x?'selected':''}>${x}</option>`).join('')}</select></div>
+<div><label>错在哪一步</label><select class="r-cause"><option value="">—</option>${CAUSE.map(x=>`<option ${l.cause===x?'selected':''}>${x}</option>`).join('')}</select></div></div>
+<label>下次怎么做</label><textarea class="r-lesson">${esc(l.lesson)}</textarea>
+<div class="row" style="margin-top:10px"><button type="button" class="pri r-save">保存复盘</button><button type="button" class="r-del">删除</button></div></div></details>`}).join('');
+}
+$('j-log').addEventListener('click',ev=>{
+  const ent=ev.target.closest('.rec');if(!ent)return;const l=logs.find(x=>x.id===ent.dataset.id);if(!l)return;
+  if(ev.target.closest('.r-save')){saveEntry({...l,actual:ent.querySelector('.r-actual').value.trim(),result:ent.querySelector('.r-result').value,cause:ent.querySelector('.r-cause').value,lesson:ent.querySelector('.r-lesson').value.trim()});toast('复盘已保存')}
+  if(ev.target.closest('.r-del')){if(ent.dataset.confirm)delEntry(l.id);else{ent.dataset.confirm='1';ev.target.textContent='再点一次确认删除'}}
+});
+['j-q','j-fa','j-fs'].forEach(k=>$(k).addEventListener('input',renderJudge));
+$('j-copyall').addEventListener('click',()=>{const all=logs.filter(isJ).sort((a,b)=>(a.created||0)-(b.created||0));if(!all.length){toast('还没有记录');return}
+  copyText(all.map(l=>`【${l.date}｜${l.area||''}】${l.what}\n依据：${l.why}\n来源：${l.src}　把握：${l.conf}%　验证日：${l.due||'—'}\n预期：${l.exp}\n结果：${l.result||'待验证'}${l.actual?'\n实际：'+l.actual:''}${l.cause?'\n错在：'+l.cause:''}${l.lesson?'\n下次：'+l.lesson:''}`).join('\n\n'))});
+
+/* ===== 记录：提问记录 ===== */
+function renderPrompt(){
+  const all=logs.filter(l=>l.kind==='prompt').sort((a,b)=>(b.created||0)-(a.created||0));
+  const q=$('p-q').value.trim().toLowerCase(),fa=$('p-fa').value,fs=$('p-fs').value;
+  const list=all.filter(l=>(!fa||l.area===fa)&&(!fs||(fs==='noted'&&l.note)||(fs==='todo'&&!l.note))&&(!q||[l.q,l.prompt,l.note].join(' ').toLowerCase().includes(q)));
+  if(!all.length){$('p-log').innerHTML='<p class="empty">还没有提问记录。在“提问”页生成提示词后，点“存进提问记录”。</p>';return}
+  if(!list.length){$('p-log').innerHTML='<p class="empty">没有符合条件的记录。</p>';return}
+  $('p-log').innerHTML=list.map(l=>`<details class="rec" data-id="${esc(l.id)}"><summary><span class="t">${esc(l.q)}</span><span class="tag ${l.note?'g':''}">${l.note?'有收获':'待补收获'}</span><span class="m">${esc(l.date)} · ${esc(l.area||'')}</span></summary>
+<div class="body"><div class="tpl"><p>${esc(l.prompt)}</p><button type="button" data-tpl="${esc(l.prompt)}">再次复制</button></div>
+<label>AI答得怎么样，有用的结论是什么</label><textarea class="p-note">${esc(l.note)}</textarea>
+<div class="row" style="margin-top:10px"><button type="button" class="pri p-save">保存收获</button><button type="button" class="p-use">载入生成器修改</button><button type="button" class="p-del">删除</button></div></div></details>`).join('');
+}
+$('p-log').addEventListener('click',ev=>{
+  const ent=ev.target.closest('.rec');if(!ent)return;const l=logs.find(x=>x.id===ent.dataset.id);if(!l)return;
+  if(ev.target.closest('.p-save')){saveEntry({...l,note:ent.querySelector('.p-note').value.trim()});toast('已保存')}
+  if(ev.target.closest('.p-use')){$('g-q').value=l.q;build();location.hash='ask';toast('已载入问题，约束保持当前填写')}
+  if(ev.target.closest('.p-del')){if(ent.dataset.confirm)delEntry(l.id);else{ent.dataset.confirm='1';ev.target.textContent='再点一次确认删除'}}
+});
+['p-q','p-fa','p-fs'].forEach(k=>$(k).addEventListener('input',renderPrompt));
+
+function renderToday(){
+  const all=logs.filter(isJ),due=all.filter(isDue).length,open=all.filter(l=>!l.result).length,pr=logs.filter(l=>l.kind==='prompt').length;
+  $('today').innerHTML=`<a href="#records" class="${due?'hot':''}"><b>${due}</b>条判断到期，该复盘了</a><a href="#records"><b>${open}</b>条判断待验证</a><a href="#ask"><b>${pr}</b>条提问记录 · 去提问 →</a><a href="#learn" class="${doneToday()<GOAL?'hot':''}"><b>${doneToday()}/${GOAL}</b>今日练习${streak()?' · 连续'+streak()+'天':''} →</a>`;
+}
+function renderRecords(){renderJudge();renderPrompt();renderToday()}
+
+/* ===== 练习：题库 ===== */
+const FQ={
+f1:[{q:'朋友说：“这个小区去年房价涨了8%，说明这里一定会继续涨，你赶紧上车。”其中“一定会继续涨”属于哪一类？',o:['事实','推断','立场'],a:1,e:'“涨了8%”可以查到，是事实；“一定会继续涨”是从过去推出来的，是推断，而且不必然成立；“赶紧上车”才是立场。'},
+ {q:'直播间说：“这款锅已经卖出50万口，说明大家都认可，库存只剩200件了快下单。”哪一句是立场？',o:['已经卖出50万口','说明大家都认可','库存只剩200件了快下单'],a:2,e:'立场是说话人希望你做什么、相信什么。“快下单”对卖家最有利；“卖出50万口”是可核实的事实，“大家都认可”是推断。'}],
+f2:[{q:'下面哪句话可以被证伪（能被事实证明是错的）？',o:['做外贸最重要的是坚持','用心服务客户就会有回报','德国客户的询盘在每年9–10月比其他月份多'],a:2,e:'只有第三句给出了可以观察、可以被推翻的结果。前两句无论发生什么都能自圆其说，所以不提供信息。'},
+ {q:'“选对赛道比努力重要”这句话的问题在哪？',o:['无论结果如何都能自圆其说，所以没有提供信息','说得太绝对','没有引用数据'],a:0,e:'成功了可以说“赛道选对了”，失败了可以说“赛道选错了”。一句永远不会错的话，也就帮不了你做任何判断。'}],
+f3:[{q:'有人建议：“辞职全职做副业，能更快起步。”你最该追问的是？',o:['具体能快多少','代价是什么，以我现在的资源付不付得起','有没有人这样成功过'],a:1,e:'只讲好处的建议被删掉了一半。辞职的代价是稳定收入、社保和退路，先算清楚付不付得起，再看能快多少。'},
+ {q:'下面哪条建议讲了代价？',o:['加盟能快速开店','加盟能快速开店，但要交8万加盟费，进货价被锁定','加盟品牌知名度高，客流有保障'],a:1,e:'第二条同时说了收益和要拿什么去换，你才能判断值不值。其余两条只讲好处，按广告处理。'}],
+f4:[{q:'让同一个AI正反各论证一遍，两边都认可的结论应该怎么对待？',o:['直接当成事实','相对可靠，但还要用独立来源核对','没有参考价值'],a:1,e:'同一个模型和自己辩论，共同点可能只是它自己的偏见。再用官方数据、真实报价或真人反馈核一遍，才算硬骨头。'},
+ {q:'正反两边吵得最凶的地方，说明了什么？',o:['AI出错了，应该忽略','这是真正的不确定区，需要你自己判断并承担','再问一遍，直到两边一致'],a:1,e:'吵得最凶的地方没有标准答案，只能靠你自己下注。这也正是最值得做小实验去验证的地方。'}],
+f5:[{q:'想验证“新开发信模板更好”，哪种做法最合理？',o:['新模板发10封，看有没有回复','新旧模板在同一周各发100封，只改模板，比较回复率','这个月发新模板，下个月发旧模板'],a:1,e:'一次只改一个变量、同一时间段、样本要够。第一种没有对照组，第三种时间不同，季节和节假日会干扰结果。'},
+ {q:'两种模板各发20封，回复率约3%。结果新模板2个回复，旧模板1个回复，能说明什么？',o:['新模板好一倍','差一个回复，很可能只是运气，看不出差别','旧模板该淘汰了'],a:1,e:'每组预计只有0.6个回复，差一两个完全可能是运气。要么加大样本，要么换一个更容易发生的指标。'}],
+f6:[{q:'判断底稿最少要写下哪几项？',o:['判断、依据、预期结果、验证日期','判断和当时的心情','只写结论就够了'],a:0,e:'有了依据和预期，复盘时才能看出错在哪一环；有了验证日期，才不会忘了回头看。'},
+ {q:'复盘时为什么要标出“错在哪一步”（信息源、逻辑、情绪）？',o:['方便做统计图','找出自己最常犯哪一类错，下次针对性地改','显得记录更认真'],a:1,e:'如果你发现自己总是错在“信息源”，下次就该先核实来源；总错在“情绪”，就该冷静一天再做决定。'}],
+f7:[{q:'AI说“开奶茶店只需要营业执照”，你应该怎么做？',o:['相信，因为逻辑通顺','去当地市场监管部门的官网或办事窗口核实需要哪些许可','换个问法再问一次AI'],a:1,e:'证照、法规、税务这类事实，逻辑再通顺也要回到官方来源核对。再问一次AI，仍然是同一个来源。'},
+ {q:'AI给了一个出处链接，下一步应该？',o:['直接引用，有出处就可信','点进去确认它真的存在、真的这么写','出处越多越可信，再让它多给几个'],a:1,e:'AI也会编出看起来很真的出处。点进去看原文，才算核实过。'}]
+};
+const Q={};
+M.forEach(m=>{Q[m.id]=m.g==='a'?KEYS.map(k=>({t:'rw',bad:m.ex[k][0],good:m.ex[k][1],sc:SC[k].n})):FQ[m.id].map(x=>({t:'ch',...x}))});
+
+/* ===== 练习：进度 ===== */
+const GOAL=3,IV=[1,1,3,7,14,30];
+const addDays=d=>new Date(Date.now()+d*864e5).toISOString().slice(0,10);
+function normProg(p){p=p&&typeof p==='object'?p:{};return {m:p.m||{},days:Array.isArray(p.days)?p.days:[],cnt:p.cnt||{d:'',n:0}}}
+let prog=normProg(store.get('tb-prog',null)),progDirty=false,progTimer;
+const P=m=>prog.m[m.id]||(prog.m[m.id]={lv:0,due:'',qi:0,n:0,ok:0});
+function saveProg(){store.set('tb-prog',prog);progDirty=true;clearTimeout(progTimer);
+ progTimer=setTimeout(async()=>{try{if(col)await col.doc('progress').set({id:'progress',kind:'progress',data:prog})}catch(e){}progDirty=false},800)}
+const doneToday=()=>prog.cnt.d===today()?prog.cnt.n:0;
+function streak(){const s=new Set(prog.days);let n=0,d=0;if(!s.has(addDays(0)))d=1;while(s.has(addDays(-(d+n))))n++;return n}
+function lvText(m){const p=P(m);if(!p.n)return '还没练过';const st=p.lv>=5?'已掌握':p.lv>=3?'熟悉':p.lv>=1?'学习中':'需要重练';return st+(p.due?' · '+(p.due<=today()?'今天该复习':p.due+' 复习'):'')}
+const dots=m=>{const l=P(m).lv;return `<i class="dots" aria-label="掌握 ${l}/5">${'●'.repeat(l)}<span class="o">${'●'.repeat(5-l)}</span></i>`};
+function todayQueue(){const t=today();
+ const due=M.filter(m=>P(m).n&&P(m).due<=t).sort((a,b)=>P(a).lv-P(b).lv||(P(a).due<P(b).due?-1:1));
+ const fresh=M.filter(m=>!P(m).n);
+ return [...due,...fresh].concat(M.filter(m=>P(m).n&&P(m).due>t).sort((a,b)=>P(a).due<P(b).due?-1:1))}
+function record(mid,r){const m=M.find(x=>x.id===mid),p=P(m);p.n++;
+ if(r==='good'){p.lv=Math.min(5,p.lv+1);p.ok++}else if(r==='wrong'){p.lv=Math.max(0,p.lv-1)}
+ p.due=addDays(r==='good'?IV[p.lv]:1);p.qi=(p.qi+1)%Q[mid].length;
+ const t=today();if(!prog.days.includes(t))prog.days.push(t);prog.days=prog.days.slice(-400);
+ prog.cnt=prog.cnt.d===t?{d:t,n:prog.cnt.n+1}:{d:t,n:1};saveProg();renderLearnAll()}
+
+/* ===== 练习：界面 ===== */
+let sess=null,sampleFn=null;
+function startSession(ids,label){sess={items:ids.map(id=>({mid:id,qi:P(M.find(m=>m.id===id)).qi})),i:0,label,res:[]};if(location.hash!=='#learn')location.hash='learn';renderCard();setTimeout(()=>$('l-card').scrollIntoView({block:'start',behavior:'smooth'}),60)}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-practice]');if(b)startSession([b.dataset.practice],'单练一招')});
+function renderLearnAll(){renderCheat();renderLearnTop();renderGrid();if(typeof renderToday==='function')renderToday()}
+function renderLearnTop(){
+ const mast=M.filter(m=>P(m).lv>=5).length,dt=doneToday(),due=M.filter(m=>P(m).n&&P(m).due<=today()).length;
+ $('l-stat').innerHTML=`<div><b>${dt}/${GOAL}</b>今日已练</div><div><b>${streak()}</b>连续天数</div><div><b>${mast}/14</b>已掌握</div><div><b>${due}</b>今天该复习的招</div>`;
+ if(sess)return;
+ $('l-start').innerHTML=dt<GOAL?`<button type="button" class="red" id="l-go">开始今天的练习（${GOAL-dt}题）</button>`:`<span class="verdict ok">今天的 ${GOAL} 题练完了。</span><button type="button" id="l-go">再练 ${GOAL} 题</button>`;
+ $('l-go').onclick=()=>{const n=dt<GOAL?GOAL-dt:GOAL;startSession(todayQueue().slice(0,n).map(m=>m.id),'今日练习')};
+}
+function renderGrid(){
+ const row=(m,r)=>{const l=P(m).lv;return `<a href="#learn" data-practice="${m.id}"><span class="num" style="${r?'color:var(--red)':''}">${numOf(m)}</span><span>${esc(m.t)}</span><span class="bar5">${[1,2,3,4,5].map(i=>`<i class="${i<=l?'on':''}"></i>`).join('')}</span><span class="st">${esc(lvText(m).split(' · ')[0])}</span></a>`};
+ $('l-grid').innerHTML='<div class="k">提问七招</div>'+MA.map(m=>row(m,0)).join('')+'<div class="k">筛选七关</div>'+MF.map(m=>row(m,1)).join('');
+}
+function renderCard(){
+ const c=$('l-card');$('l-start').innerHTML='';
+ if(!sess){c.innerHTML='';renderLearnTop();return}
+ if(sess.i>=sess.items.length){
+  const g=sess.res.filter(r=>r==='good').length;
+  c.innerHTML=`<div class="qcard"><h3>练完了：${sess.items.length} 题里有 ${g} 题完全做对</h3><p class="mut">做错或“差不多”的那几招，明天会再出现。</p><div class="row"><button type="button" class="pri" id="l-done">好的</button></div></div>`;
+  $('l-done').onclick=()=>{sess=null;renderCard()};return}
+ const it=sess.items[sess.i],m=M.find(x=>x.id===it.mid),q=Q[m.id][it.qi%Q[m.id].length];
+ const head=`<div class="qh"><span>${esc(sess.label)} · 第 ${sess.i+1}/${sess.items.length} 题</span><a href="#m-${m.id}">${m.g==='a'?'提问':'筛选'} ${numOf(m)} · ${esc(m.t)} · 看教程</a></div>`;
+ if(q.t==='ch'){
+  c.innerHTML=`<div class="qcard">${head}<h3>${esc(q.q)}</h3><div class="choice">${q.o.map((o,i)=>`<button type="button" data-o="${i}">${esc(o)}</button>`).join('')}</div><div id="l-after"></div></div>`;
+  c.querySelector('.choice').onclick=e=>{const b=e.target.closest('[data-o]');if(!b||c.dataset.ans)return;c.dataset.ans='1';const i=+b.dataset.o,ok=i===q.a;
+   c.querySelectorAll('[data-o]').forEach(x=>{if(+x.dataset.o===q.a)x.classList.add('right');else if(x===b)x.classList.add('wrong');x.disabled=true});
+   $('l-after').innerHTML=`<p class="verdict ${ok?'ok':'bad'}" style="margin-top:12px">${ok?'答对了。':'没答对。'}</p><p>${esc(q.e)}</p><button type="button" class="pri" id="l-next">下一题</button>`;
+   $('l-next').onclick=()=>next(ok?'good':'wrong')};
+  delete c.dataset.ans;
+ }else{
+  c.innerHTML=`<div class="qcard">${head}<h3>用「${esc(m.t)}」改写这个问题</h3><p class="small">场景：${esc(q.sc)} · 要点：${esc(m.one)}</p><div class="ex"><div class="bad">${esc(q.bad)}</div></div>
+<label for="l-ans">你的改写</label><textarea id="l-ans" placeholder="写下你会怎么问"></textarea>
+<div class="row" style="margin-top:10px"><button type="button" class="pri" id="l-sub">写好了，看参考</button><button type="button" class="link" id="l-skip">不会，直接看参考</button></div><div id="l-after"></div></div>`;
+  const show=()=>{const ans=$('l-ans').value.trim();$('l-sub').disabled=true;$('l-skip').disabled=true;
+   $('l-after').innerHTML=`<div class="k">参考改写</div><div class="ex"><div class="good">${esc(q.good)}</div></div>
+${ans?`<div class="row" style="margin-top:10px"><button type="button" id="l-aicopy">复制点评请求，发给 Claude</button></div>`:''}<div class="ai" id="l-aiout"></div>
+<div class="k">对照之后，给自己打分</div><div class="rate"><button type="button" data-r="wrong">没改对</button><button type="button" data-r="ok">差不多</button><button type="button" data-r="good">改得好</button></div>`;
+   if($('l-aicopy'))$('l-aicopy').onclick=()=>{copyText(aiPrompt(m,q,ans));toast('已复制，粘贴到 Claude App 里发送')};
+   $('l-after').querySelector('.rate').onclick=e=>{const b=e.target.closest('[data-r]');if(b)next(b.dataset.r)};
+   if(!ans)$('l-after').querySelector('[data-r=good]').disabled=true};
+  $('l-sub').onclick=()=>{if(!$('l-ans').value.trim()){toast('先写下你的改写，或者点“直接看参考”');$('l-ans').focus();return}show()};
+  $('l-skip').onclick=show;
+ }
+}
+function next(r){const it=sess.items[sess.i];record(it.mid,r);sess.res.push(r);sess.i++;renderCard();$('l-card').scrollIntoView({block:'start'})}
+async function aiReview(m,q,ans){const out=$('l-aiout'),btn=$('l-ai');if(!sampleFn||!out)return;btn.disabled=true;out.textContent='Claude 正在看你的改写…';
+ const prompt=`你是一位提问方法教练，用简体中文回答，语气直接、友善。\n学员正在练习提问方法「${m.t}」。这一招的要点：${m.w}\n\n原来的问法（差的）：${q.bad}\n学员的改写：${ans}\n参考改写（只是一种写法，不要求字面一致）：${q.good}\n\n请按下面的格式回答，不要用Markdown符号：\n第一行只写“评分：好”或“评分：差不多”或“评分：没改对”（看是否用上了这一招的要点）\n接着用两三句话说：哪里做得好，缺了什么\n最后一行以“可以这样改：”开头，在学员原句的基础上给出一个改进版`;
+ try{const r=await sampleFn(prompt,{modelTier:'quick',onText:({text})=>{out.textContent=text}});out.textContent=r.text;
+  const mm=r.text.match(/评分：\s*(好|差不多|没改对)/);if(mm){const k={'好':'good','差不多':'ok','没改对':'wrong'}[mm[1]];const b=$('l-after').querySelector(`[data-r=${k}]`);if(b){b.disabled=false;b.classList.add('sug')}}}
+ catch(e){if(e&&e.code==='not_granted'){sampleFn=null;out.textContent='没有开启 Claude 点评，可以自己对照参考答案打分。'}else if(e&&e.code==='rate_limited'){out.textContent='点评次数暂时用完了，稍后再试。先自己对照参考打分吧。'}else{out.textContent='这次没能点评，先自己对照参考答案打分吧。'}btn.disabled=false}}
+function aiPrompt(m,q,ans){return `你是一位提问方法教练，用简体中文回答，语气直接、友善。\n我正在练习提问方法「${m.t}」。这一招的要点：${m.w}\n\n原来的问法（差的）：${q.bad}\n我的改写：${ans}\n参考改写（只是一种写法，不要求字面一致）：${q.good}\n\n请先给评分（好 / 差不多 / 没改对，看是否用上了这一招的要点），再用两三句话说哪里做得好、缺了什么，最后在我原句的基础上给出一个改进版。`}
+const startSample=async()=>{try{if(window.claude&&claude.use)sampleFn=await claude.use('sample')}catch(e){sampleFn=null}};
+
+/* ===== 桌面App ===== */
+let desk=null,inApp=false,lastDue=-1;
+function drawIcon(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+ x.fillStyle='#111';x.fillRect(0,0,256,256);x.fillStyle='#e4002b';x.fillRect(36,36,44,44);
+ x.fillStyle='#fff';x.font='900 150px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('问',140,150);
+ return c.toDataURL('image/png')}
+async function notifyState(){try{return await desk.permissions.state('notifications')}catch(e){return 'unavailable'}}
+async function refreshNotifyUI(){if(!inApp)return;const s=await notifyState();
+ $('notify-btn').hidden=!(s==='prompt'||s==='denied');$('notify-btn').textContent=s==='denied'?'到期提醒已关闭，去打开':'开启到期提醒';$('notify-btn').dataset.s=s}
+$('notify-btn').addEventListener('click',async()=>{if(!desk)return;
+ try{if($('notify-btn').dataset.s==='denied')await desk.permissions.manage();else await desk.permissions.request(['notifications'])}catch(e){toast('没能打开提醒设置')}
+ await refreshNotifyUI();lastDue=-1;renderJudge()});
+async function deskDue(due){if(!inApp||due===lastDue)return;lastDue=due;
+ desk.app.dock.setBadge(due?String(due):'').catch(()=>{});
+ if(!due||store.get('tb-notified','')===today())return;
+ if(await notifyState()!=='granted')return;
+ try{await desk.notification.show({body:due+' 个判断到期了，打开「记录」复盘一下。'});store.set('tb-notified',today())}catch(e){}}
+function openNew(){location.hash='records';setRT('judge');$('jform').hidden=false;setTimeout(()=>$('j-what').focus(),50)}
+const startDesktop=async()=>{
+  if(!(window.claude&&claude.use))return;
+  try{desk=await claude.use('desktop')}catch(e){desk=null}
+  if(!desk)return;
+  if(!desk.window){
+    try{if(await desk.install.state()==='available'){$('inst-btn').hidden=false;$('inst-desk').textContent='在这里就能直接装成独立的App：有自己的窗口和图标，判断到期会弹通知提醒，还能用快捷键切换页面。'}}catch(e){}
+    return}
+  inApp=true;$('install-box').hidden=true;
+  desk.app.dock.setIcon(drawIcon()).catch(()=>{});
+  desk.window.setOptions({width:1100,height:820,minWidth:380,minHeight:560}).catch(()=>{});
+  desk.Menu.setApplicationMenu([{label:'前往',submenu:[
+    {label:'速查',accelerator:'CmdOrCtrl+1',click:()=>{location.hash='home'}},
+    {label:'提问',accelerator:'CmdOrCtrl+2',click:()=>{location.hash='ask'}},
+    {label:'练习',accelerator:'CmdOrCtrl+3',click:()=>{location.hash='learn'}},
+    {label:'方法',accelerator:'CmdOrCtrl+4',click:()=>{location.hash='methods'}},
+    {label:'工具',accelerator:'CmdOrCtrl+5',click:()=>{location.hash='tools'}},
+    {label:'记录',accelerator:'CmdOrCtrl+6',click:()=>{location.hash='records'}},
+    {type:'separator'},
+    {label:'记一个判断',accelerator:'CmdOrCtrl+N',click:openNew}]},{role:'editMenu'}]).catch(()=>{});
+  refreshNotifyUI();lastDue=-1;renderJudge();
+};
+$('inst-btn')&&$('inst-btn')&&$('inst-btn').addEventListener('click',async()=>{try{const r=await desk.install.request();if(r==='installed')toast('正在安装，装好后会出现在你的应用里');else if(r==='failed')toast('安装没成功，请稍后再试')}catch(e){toast('安装没成功，请从 Claude 桌面版打开再试')}});
+
+/* ===== 备份与安装 ===== */
+const KEYS_LS=['tb-logs','tb-prog','tb-gen','tb-exam','tb-exp','tb-week','tb-scene'];
+$('bk-out').addEventListener('click',()=>{const data={app:'tiwen-shaixuan',v:1,date:today()};KEYS_LS.forEach(k=>data[k]=store.get(k,null));
+ const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='提问与筛选-备份-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast('备份已导出')});
+$('bk-in').addEventListener('click',()=>$('bk-file').click());
+$('bk-file').addEventListener('change',async()=>{const f=$('bk-file').files[0];if(!f)return;
+ try{const d=JSON.parse(await f.text());if(d.app!=='tiwen-shaixuan')throw 0;
+  const cur=store.get('tb-logs',[]),ids=new Set(cur.map(x=>x.id));const add=(d['tb-logs']||[]).filter(x=>x&&x.id&&!ids.has(x.id));store.set('tb-logs',cur.concat(add));
+  const np=normProg(d['tb-prog']),tot=p=>Object.values(p.m).reduce((s,x)=>s+(x.n||0),0);if(tot(np)>tot(prog)){prog=np;store.set('tb-prog',prog)}
+  ['tb-gen','tb-exam','tb-exp','tb-week'].forEach(k=>{if(d[k]!=null&&store.get(k,null)==null)store.set(k,d[k])});
+  useLocal(LOCAL);toast('导入完成，新增 '+add.length+' 条记录')}catch(e){toast('这个文件不是本App的备份')}
+ $('bk-file').value=''});
+let pwaEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pwaEvt=e;$('pwa-btn').hidden=false});
+$('pwa-btn').addEventListener('click',async()=>{if(!pwaEvt)return;pwaEvt.prompt();try{await pwaEvt.userChoice}catch(e){}pwaEvt=null;$('pwa-btn').hidden=true});
+if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches||navigator.standalone)$('install-box').hidden=true;
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+renderLearnAll();applyScene();build();exam();calc();renderRecords();route();startStore();
+}
+</script>
+</body>
+</html>
