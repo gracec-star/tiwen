@@ -203,7 +203,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <div class="rule install" id="install-box"><h2>装到手机主屏幕</h2><p class="small">装好后像普通App一样从图标打开，全屏显示，没网也能用。</p>
 <div class="grid2"><div><h3>iPhone</h3><ol><li>用 <b>Safari</b> 打开这个网址（微信里打开的要先点右上角“在浏览器打开”）。</li><li>点底部的分享按钮。</li><li>选“添加到主屏幕”，再点“添加”。</li></ol></div>
 <div><h3>安卓</h3><ol><li>用 Chrome、Edge 或手机自带浏览器打开这个网址。</li><li>点下面的按钮，或浏览器菜单里的“安装应用”或“添加到主屏幕”。</li></ol><button type="button" class="pri" id="pwa-btn" hidden style="margin-top:8px">安装到手机</button></div></div>
-<p class="small" style="margin-top:10px">记录只保存在这台设备上。换手机或清理浏览器之前，先到“记录”页点“导出备份”。</p></div>
+<p class="small" style="margin-top:10px">记录只保存在这台设备上。换设备时，在“记录”页点“导出进度码”，到新设备上点“导入进度码”粘贴进去就行。</p></div>
 <div class="rule"><h2>每周复盘清单</h2><p class="small">打勾状态只保存在这个浏览器里。</p><div id="week"></div><div class="row" style="margin-top:10px"><button type="button" id="w-reset">新的一周，清空打勾</button></div></div>
 </section>
 
@@ -292,7 +292,13 @@ ol.steps{margin:0;padding-left:1.3em}
 <p class="small" id="j-status">正在连接保存位置…</p>
 <div class="rtabs" role="tablist"><button type="button" role="tab" data-rt="judge" aria-selected="true">判断底稿</button><button type="button" role="tab" data-rt="prompt" aria-selected="false">提问记录</button></div>
 <div id="rt-judge">
-<div class="row" style="margin-bottom:12px"><button class="pri" type="button" id="j-new">＋ 新增一条判断</button><button type="button" id="j-copyall">复制全部为文字</button><button type="button" id="notify-btn" hidden>开启到期提醒</button><button type="button" id="bk-out">导出备份</button><button type="button" id="bk-in">导入备份</button><input type="file" id="bk-file" accept=".json,application/json" hidden></div>
+<div class="row" style="margin-bottom:12px"><button class="pri" type="button" id="j-new">＋ 新增一条判断</button><button type="button" id="j-copyall">复制全部为文字</button><button type="button" id="notify-btn" hidden>开启到期提醒</button><button type="button" id="code-out">导出进度码</button><button type="button" id="code-in">导入进度码</button><button type="button" id="bk-out">导出备份文件</button><button type="button" id="bk-in">导入备份文件</button><input type="file" id="bk-file" accept=".json,application/json" hidden></div>
+<div class="newbox" id="code-box" hidden>
+<h3 id="code-title" style="margin-top:12px">进度码</h3>
+<p class="small" id="code-tip"></p>
+<textarea id="code-text" style="min-height:120px;font-size:13px;word-break:break-all" spellcheck="false"></textarea>
+<div class="row" style="margin-top:10px"><button type="button" class="pri" id="code-act"></button><button type="button" id="code-close">关闭</button><span class="small" id="code-len"></span></div>
+</div>
 <form class="newbox" id="jform" hidden onsubmit="return false">
 <div class="fgrid">
 <div><label for="j-what">我判断了什么</label><textarea id="j-what"></textarea></div>
@@ -538,7 +544,7 @@ async function delEntry(id){
   else{logs=logs.filter(x=>x.id!==id);store.set('tb-logs',logs);renderRecords()}
 }
 function useLocal(msg){col=null;live=false;logs=store.get('tb-logs',[]).filter(l=>l.kind!=='progress');prog=normProg(store.get('tb-prog',null));$('j-status').textContent=msg;renderRecords();renderLearnAll()}
-const LOCAL='记录保存在这台设备上。换手机或清理浏览器前，先点“导出备份”。';
+const LOCAL='记录保存在这台设备上。换设备时用“导出进度码”带过去。';
 const startStore=()=>{useLocal(LOCAL)};
 
 /* ===== 记录：判断底稿 ===== */
@@ -756,16 +762,42 @@ $('inst-btn')&&$('inst-btn')&&$('inst-btn').addEventListener('click',async()=>{t
 
 /* ===== 备份与安装 ===== */
 const KEYS_LS=['tb-logs','tb-prog','tb-gen','tb-exam','tb-exp','tb-week','tb-scene'];
-$('bk-out').addEventListener('click',()=>{const data={app:'tiwen-shaixuan',v:1,date:today()};KEYS_LS.forEach(k=>data[k]=store.get(k,null));
+$('bk-out').addEventListener('click',()=>{const data=exportData();
  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='提问与筛选-备份-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast('备份已导出')});
 $('bk-in').addEventListener('click',()=>$('bk-file').click());
-$('bk-file').addEventListener('change',async()=>{const f=$('bk-file').files[0];if(!f)return;
- try{const d=JSON.parse(await f.text());if(d.app!=='tiwen-shaixuan')throw 0;
+function importData(d){if(!d||d.app!=='tiwen-shaixuan')throw 0;
   const cur=store.get('tb-logs',[]),ids=new Set(cur.map(x=>x.id));const add=(d['tb-logs']||[]).filter(x=>x&&x.id&&!ids.has(x.id));store.set('tb-logs',cur.concat(add));
   const np=normProg(d['tb-prog']),tot=p=>Object.values(p.m).reduce((s,x)=>s+(x.n||0),0);if(tot(np)>tot(prog)){prog=np;store.set('tb-prog',prog)}
   ['tb-gen','tb-exam','tb-exp','tb-week'].forEach(k=>{if(d[k]!=null&&store.get(k,null)==null)store.set(k,d[k])});
-  useLocal(LOCAL);toast('导入完成，新增 '+add.length+' 条记录')}catch(e){toast('这个文件不是本App的备份')}
+  useLocal(LOCAL);return add.length}
+function exportData(){const data={app:'tiwen-shaixuan',v:1,date:today()};KEYS_LS.forEach(k=>data[k]=store.get(k,null));return data}
+$('bk-file').addEventListener('change',async()=>{const f=$('bk-file').files[0];if(!f)return;
+ try{const n=importData(JSON.parse(await f.text()));toast('导入完成，新增 '+n+' 条记录')}catch(e){toast('这个文件不是本App的备份')}
  $('bk-file').value=''});
+/* 进度码 */
+const b64u={enc:u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
+ dec:t=>{t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';const s=atob(t),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}};
+async function pipe(u,stream){return new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(stream)).arrayBuffer())}
+async function makeCode(){const raw=new TextEncoder().encode(JSON.stringify(exportData()));
+ if(window.CompressionStream){try{return 'TW1-'+b64u.enc(await pipe(raw,new CompressionStream('gzip')))}catch(e){}}
+ return 'TW0-'+b64u.enc(raw)}
+async function readCode(c){c=c.replace(/\s+/g,'');const m=c.match(/^TW([01])-([A-Za-z0-9_-]+)$/);if(!m)throw 0;let u=b64u.dec(m[2]);
+ if(m[1]==='1'){if(!window.DecompressionStream)throw 1;u=await pipe(u,new DecompressionStream('gzip'))}
+ return JSON.parse(new TextDecoder().decode(u))}
+let codeMode='';
+function openCode(mode){codeMode=mode;$('code-box').hidden=false;$('code-text').value='';$('code-len').textContent='';
+ if(mode==='out'){$('code-title').textContent='导出进度码';$('code-tip').textContent='复制下面这整串码，发到另一台设备（比如用微信发给自己），在那边点“导入进度码”粘贴进去。记录和练习进度都会一起过去。';$('code-act').textContent='复制进度码';$('code-text').readOnly=true;
+  makeCode().then(c=>{$('code-text').value=c;$('code-len').textContent='共 '+c.length+' 个字符'})}
+ else{$('code-title').textContent='导入进度码';$('code-tip').textContent='把另一台设备导出的进度码整串粘贴到下面。导入会合并记录，不会删除这台设备上已有的内容。';$('code-act').textContent='导入';$('code-text').readOnly=false;setTimeout(()=>$('code-text').focus(),50)}
+ $('code-box').scrollIntoView({block:'nearest'})}
+$('code-out').addEventListener('click',()=>openCode('out'));
+$('code-in').addEventListener('click',()=>openCode('in'));
+$('code-close').addEventListener('click',()=>{$('code-box').hidden=true});
+$('code-act').addEventListener('click',async()=>{const t=$('code-text').value.trim();
+ if(codeMode==='out'){if(t)copyText(t);return}
+ if(!t){toast('先粘贴进度码');return}
+ try{const n=importData(await readCode(t));$('code-box').hidden=true;toast('导入完成，新增 '+n+' 条记录，练习进度已更新')}
+ catch(e){toast(e===1?'这个浏览器太旧，无法读取这个进度码，请用备份文件':'进度码不完整或不正确，请重新复制整串')}});
 let pwaEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pwaEvt=e;$('pwa-btn').hidden=false});
 $('pwa-btn').addEventListener('click',async()=>{if(!pwaEvt)return;pwaEvt.prompt();try{await pwaEvt.userChoice}catch(e){}pwaEvt=null;$('pwa-btn').hidden=true});
