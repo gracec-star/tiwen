@@ -29,4 +29,4 @@
 
 ## 更新App
 
-改了 `index.html` 之后，把 `sw.js` 第2行的 `tiwen-v1` 改成 `tiwen-v2`（每次加1），再上传。手机上关掉App重新打开两次，就会换成新版本。
+改了 `index.html` 之后，把 `sw.js` 第2行的版本号加1（比如 `tiwen-v3` 改成 `tiwen-v4`），再上传。手机联网打开App时会自动用上新版本。
