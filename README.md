@@ -21,7 +21,9 @@
 ## 装到手机
 
 - **iPhone**：用 Safari 打开网址 → 分享 → 添加到主屏幕
-- **安卓**：用 Chrome 打开网址 → 页面里的“安装到手机”按钮，或浏览器菜单 → 安装应用
+- **安卓**：直接下载安装包 [tiwen.apk](https://github.com/gracec-star/tiwen/releases/latest/download/tiwen.apk)，点开安装；也可以用 Chrome 打开网址 → 安装应用
+
+每次更新 `main` 分支，GitHub 会自动重新打包安卓安装包，发布在 Releases 里。
 
 ## 数据说明
 

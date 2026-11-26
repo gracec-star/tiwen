@@ -202,7 +202,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <div class="rule"><h2>长期练习</h2><p class="small">你和高手之间的差距，大部分是练习量的差距。</p><div class="grid2" id="practice"></div></div>
 <div class="rule install" id="install-box"><h2>装到手机主屏幕</h2><p class="small">装好后像普通App一样从图标打开，全屏显示，没网也能用。</p>
 <div class="grid2"><div><h3>iPhone</h3><ol><li>用 <b>Safari</b> 打开这个网址（微信里打开的要先点右上角“在浏览器打开”）。</li><li>点底部的分享按钮。</li><li>选“添加到主屏幕”，再点“添加”。</li></ol></div>
-<div><h3>安卓</h3><ol><li>用 Chrome、Edge 或手机自带浏览器打开这个网址。</li><li>点下面的按钮，或浏览器菜单里的“安装应用”或“添加到主屏幕”。</li></ol><button type="button" class="pri" id="pwa-btn" hidden style="margin-top:8px">安装到手机</button></div></div>
+<div><h3>安卓</h3><ol><li>用 Chrome、Edge 或手机自带浏览器打开这个网址。</li><li>点下面的按钮，或浏览器菜单里的“安装应用”或“添加到主屏幕”。</li></ol><button type="button" class="pri" id="pwa-btn" hidden style="margin-top:8px">安装到手机</button><p style="margin-top:10px"><b>或者下载安装包：</b><a href="https://github.com/gracec-star/tiwen/releases/latest/download/tiwen.apk">下载 tiwen.apk</a></p><p class="small">下载后点开安装。如果提示“未知来源”或“禁止安装”，按提示允许这一次就行。</p></div></div>
 <p class="small" style="margin-top:10px">记录只保存在这台设备上。换设备时，在“记录”页点“导出进度码”，到新设备上点“导入进度码”粘贴进去就行。</p></div>
 <div class="rule"><h2>每周复盘清单</h2><p class="small">打勾状态只保存在这个浏览器里。</p><div id="week"></div><div class="row" style="margin-top:10px"><button type="button" id="w-reset">新的一周，清空打勾</button></div></div>
 </section>
@@ -802,7 +802,9 @@ let pwaEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pwaEvt=e;$('pwa-btn').hidden=false});
 $('pwa-btn').addEventListener('click',async()=>{if(!pwaEvt)return;pwaEvt.prompt();try{await pwaEvt.userChoice}catch(e){}pwaEvt=null;$('pwa-btn').hidden=true});
 if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches||navigator.standalone)$('install-box').hidden=true;
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+const IN_APK=!!window.Capacitor;
+if(IN_APK){$('install-box').hidden=true;$('bk-out').hidden=true}
+if(!IN_APK&&'serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 renderLearnAll();applyScene();build();exam();calc();renderRecords();route();startStore();
 }
