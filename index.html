@@ -50,10 +50,10 @@ main{padding:clamp(18px,3vw,40px) clamp(16px,3.5vw,48px) calc(96px + env(safe-ar
 .view{display:none}.view.on{display:block}
 .tabs{display:none}
 @media(max-width:899px){.shell{grid-template-columns:minmax(0,1fr)}.side{display:none}
- .tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
- .tabs a{flex-direction:column;gap:0;padding:10px 2px;font-size:14px;min-height:52px;position:relative;justify-content:center}
+ .tabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+ .tabs a{flex-direction:column;gap:0;padding:10px 0;font-size:13px;min-height:52px;position:relative;justify-content:center}
  .tabs a[aria-current=page]{color:var(--red);font-weight:900}
- .tabs .badge{position:absolute;top:4px;right:14%;margin:0}
+ .tabs .badge{position:absolute;top:3px;right:3px;margin:0;font-size:11px;padding:0 5px;line-height:17px}
  .brand span{display:none}}
 @media(max-width:420px){.seg button{padding:0 9px}}
 /* 通用 */
@@ -174,6 +174,25 @@ ol.steps{margin:0;padding-left:1.3em}
 .bar5{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}.bar5 i{height:8px;background:var(--hair)}.bar5 i.on{background:var(--red)}
 .mgrid .st{font-size:13px;color:var(--mut);text-align:right}
 @media(max-width:600px){.mgrid a{grid-template-columns:26px minmax(0,1fr) 70px}.mgrid .st{grid-column:2/-1;text-align:left}}
+/* 教练 */
+.cmodes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 18px}
+@media(max-width:600px){.cmodes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cmodes button{text-align:left;padding:10px 12px;min-height:62px;display:flex;flex-direction:column;justify-content:center;gap:4px;line-height:1.3}
+.cmodes button span{font-weight:400;font-size:13px;color:var(--mut)}
+.cmodes button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.cmodes button[aria-pressed=true] span{color:inherit;opacity:.75}
+.cpanel[hidden],.ai[hidden],.ai-only[hidden]{display:none}
+.cpanel textarea{min-height:110px}
+.finds{margin-top:6px}
+.fnd{display:grid;grid-template-columns:24px minmax(0,1fr);gap:2px 10px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.fnd .mk{font-weight:900;text-align:center;line-height:1.6}
+.fnd .mk.ok{color:var(--ok)}.fnd .mk.no{color:var(--red)}.fnd .mk.w{color:light-dark(#b86e00,#f0a040)}
+.fnd p{margin:0 0 2px;font-size:15px}.fnd .why{color:var(--mut);font-size:14px}
+.sent{padding:8px 0;border-bottom:1px solid var(--hair);font-size:15px}
+.stag{display:inline-block;font-size:12px;font-weight:700;padding:0 6px;margin-right:6px;border:1.5px solid var(--line);white-space:nowrap}
+.stag.st{background:var(--red);border-color:var(--red);color:#fff}
+.stag.in{border-color:light-dark(#b86e00,#f0a040);color:light-dark(#b86e00,#f0a040)}
+.stag.nu{border-color:var(--ok);color:var(--ok)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -227,6 +246,40 @@ ol.steps{margin:0;padding-left:1.3em}
 <pre id="g-out"></pre>
 <div class="row"><button class="red" type="button" id="g-copy">复制提示词</button><button type="button" id="g-save">存进提问记录</button><span class="small" id="g-count"></span></div>
 </div>
+</div>
+</section>
+
+<!-- 教练 -->
+<section class="view" id="v-coach">
+<h1>教练</h1>
+<p class="small" id="c-status"></p>
+<div class="cmodes" id="c-modes"></div>
+<div class="cpanel" id="c-ask">
+<p class="mut">把你准备发给AI的问题原样写下来，越粗糙越好。教练只告诉你哪里要改、为什么要改，不替你改。</p>
+<label for="ca-text">你的问题</label>
+<textarea id="ca-text" placeholder="例如：我想做外贸，第一个产品选什么好？"></textarea>
+<div class="row" style="margin-top:10px"><button type="button" class="pri" id="ca-go">教练看看</button><button type="button" id="ca-fill">带入提问页的内容</button><button type="button" class="copy-only" id="ca-copy">复制给 Claude</button><button type="button" id="ca-rewrite" hidden>直接帮我改一版</button></div>
+<div id="ca-rule"></div>
+<div class="ai" id="ca-ai" hidden></div>
+</div>
+<div class="cpanel" id="c-filter" hidden>
+<p class="mut">把AI的回答、一篇文章或别人的建议贴进来，教练带你逐关检查，并逐句标出立场、推断和要核实的数字。</p>
+<label for="cf-q">当时问的问题（可不填）</label><input id="cf-q">
+<label for="cf-text">要检查的内容</label><textarea id="cf-text" style="min-height:150px"></textarea>
+<div class="row" style="margin-top:10px"><button type="button" class="pri" id="cf-go">逐关检查</button><button type="button" class="copy-only" id="cf-copy">复制给 Claude</button></div>
+<div id="cf-rule"></div>
+<div class="ai" id="cf-ai" hidden></div>
+</div>
+<div class="cpanel" id="c-review" hidden>
+<p class="mut">挑一条判断，教练用五个问题带你复盘，保存后会写回判断底稿。到期的排在最前面。</p>
+<label for="cr-pick">选一条判断</label><select id="cr-pick"></select>
+<div id="cr-body"></div>
+</div>
+<div class="cpanel" id="c-week" hidden>
+<p class="mut">教练根据你最近7天的练习和记录，告诉你哪里做得好、下周重点练什么。</p>
+<div id="cw-rule"></div>
+<div class="row" style="margin-top:12px"><button type="button" class="pri ai-only" id="cw-go">让 Claude 写本周点评</button><button type="button" class="copy-only" id="cw-copy">复制给 Claude</button></div>
+<div class="ai" id="cw-ai" hidden></div>
 </div>
 </section>
 
@@ -405,7 +458,7 @@ const MA=M.filter(m=>m.g==='a'),MF=M.filter(m=>m.g==='f');
 const numOf=m=>(m.g==='a'?MA:MF).indexOf(m)+1;
 
 /* ===== 导航与路由 ===== */
-const NAV=[['home','速查'],['ask','提问'],['learn','练习'],['methods','方法'],['tools','工具'],['records','记录']];
+const NAV=[['home','速查'],['ask','提问'],['learn','练习'],['coach','教练'],['methods','方法'],['tools','工具'],['records','记录']];
 const navHtml=NAV.map(n=>`<a href="#${n[0]}" data-nav="${n[0]}">${n[1]}${n[0]==='records'?'<span class="badge" data-due></span>':''}</a>`).join('');
 $('side').innerHTML=navHtml;$('tabs').innerHTML=navHtml;
 let curM='a1';
@@ -416,6 +469,7 @@ function route(){
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
   document.querySelectorAll('[data-nav]').forEach(a=>{if(a.dataset.nav===v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
   if(v==='methods'){$('lib').classList.toggle('detail',h.startsWith('m-'));renderMethod()}
+  if(v==='coach')renderCoachModes();
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',route);
@@ -719,6 +773,240 @@ async function aiReview(m,q,ans){const out=$('l-aiout'),btn=$('l-ai');if(!sample
 function aiPrompt(m,q,ans){return `你是一位提问方法教练，用简体中文回答，语气直接、友善。\n我正在练习提问方法「${m.t}」。这一招的要点：${m.w}\n\n原来的问法（差的）：${q.bad}\n我的改写：${ans}\n参考改写（只是一种写法，不要求字面一致）：${q.good}\n\n请先给评分（好 / 差不多 / 没改对，看是否用上了这一招的要点），再用两三句话说哪里做得好、缺了什么，最后在我原句的基础上给出一个改进版。`}
 const startSample=async()=>{try{if(window.claude&&claude.use)sampleFn=await claude.use('sample')}catch(e){sampleFn=null}};
 
+/* ===== 教练 ===== */
+const COACH_MODES=[['ask','提问教练','检查我的问题'],['filter','筛选教练','检查AI的回答'],['review','复盘教练','带我复盘判断'],['week','每周教练','看看我这一周']];
+let cMode=store.get('tb-cmode','ask');if(!COACH_MODES.some(m=>m[0]===cMode))cMode='ask';
+const mlink=id=>{const m=M.find(x=>x.id===id);return m?` <a href="#m-${id}" class="small">看「${esc(m.t)}」</a>`:''};
+function coachStatus(){
+ $('c-status').textContent=sampleFn?'Claude 正在当你的教练：它会真的读你写的内容。规则检查的结果也会同时给出。':'离线教练：按规则检查，马上出结果。想要更深入的点评，点“复制给 Claude”，粘贴到 Claude App 里。';
+ document.querySelectorAll('.ai-only').forEach(b=>b.hidden=!sampleFn);
+ document.querySelectorAll('.copy-only').forEach(b=>b.textContent=sampleFn?'复制给 Claude App':'复制给 Claude');
+}
+function renderCoachModes(){
+ $('c-modes').innerHTML=COACH_MODES.map(m=>`<button type="button" data-cm="${m[0]}" aria-pressed="${m[0]===cMode}"><b>${m[1]}</b><span>${m[2]}</span></button>`).join('');
+ document.querySelectorAll('.cpanel').forEach(p=>p.hidden=p.id!=='c-'+cMode);
+ if(cMode==='review')renderReviewPick();
+ if(cMode==='week')renderWeek();
+ coachStatus();
+}
+$('c-modes').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b)return;cMode=b.dataset.cm;store.set('tb-cmode',cMode);renderCoachModes()});
+async function runAI(prompt,out,btn){
+ if(!sampleFn){copyText(prompt);toast('已复制，粘贴到 Claude App 里发送');return}
+ if(btn)btn.disabled=true;out.hidden=false;out.textContent='教练正在看…';
+ try{const r=await sampleFn(prompt,{modelTier:'default',onText:({text})=>{out.textContent=text}});out.textContent=r.text}
+ catch(e){
+  if(e&&e.code==='not_granted'){sampleFn=null;coachStatus();out.textContent='没有开启 Claude 教练。可以点“复制给 Claude”，在 Claude App 里继续。'}
+  else if(e&&e.code==='rate_limited')out.textContent='教练暂时忙不过来，稍后再试。上面的规则检查结果仍然有效。';
+  else out.textContent='这次没连上 Claude 教练，稍后再试。上面的规则检查结果仍然有效。'}
+ if(btn)btn.disabled=false;
+}
+const fnd=(k,title,why,fix,mid)=>`<div class="fnd"><span class="mk ${k}">${k==='ok'?'✓':k==='no'?'✕':'!'}</span><div><p><b>${esc(title)}</b>${mid?mlink(mid):''}</p>${why?`<p class="why">为什么：${esc(why)}</p>`:''}${fix?`<p>建议：${esc(fix)}</p>`:''}</div></div>`;
+
+/* --- 提问教练 --- */
+const CHK=[
+ ['我是谁',/(我是|作为|新手|小白|经验|工作了?\s*\d|干了|从事|上班族|学生|老板|职员|业余)/,'AI不知道你是谁，就会按“一般人”给建议。','补一句你的身份和经验，比如“业余做外贸的新手”。'],
+ ['我的处境',/(目前|现在|已经|还没|正在|手上|刚刚|打算|准备|有一|拿到)/,'不说你现在走到哪一步，AI只能从零讲起。','补一句现在的进度，比如“还没有客户”“已经拿到样品”。'],
+ ['我的资源',/(预算|\d+\s*(元|块|万|美元|刀|k|K)|存款|资金|人手|团队|工厂|供应商|资源|设备|渠道|家人|朋友)/,'资源决定哪些方案你真的做得起。','补上钱、人、关系里你有的，比如“每月预算约1000元，没有工厂关系”。'],
+ ['我的时间',/(\d+\s*(天|周|个月|月|年|小时|分钟)|每天|每周|每晚|周末|期限|之前|以内|多久|截止|半年|一年)/,'不说时间，AI给的计划可能根本排不进你的日程。','补上每天或每周能投入多少、什么时候要看到结果。'],
+ ['最不能承受',/(不能|最怕|承受|不接受|不想|底线|亏|损失|不要|不可以)/,'不说底线，AI会推荐你承担不起的方案。','补一句“我最不能承受……”，写成具体金额或后果。']];
+function askRules(t){
+ const out=[];const s=t.replace(/\s+/g,'');
+ if(s.length<15)out.push(['no','问题太短','这么短的问题，AI只能猜你的情况，回答一定很泛。','把背景和你最想知道的那一点写出来，三五句话都不嫌多。','a2']);
+ const hit=CHK.filter(c=>c[1].test(t));
+ CHK.forEach(c=>{if(!c[1].test(t))out.push(['no','缺少约束：'+c[0],c[2],c[3],'a2'])});
+ const b=t.match(BIAS);if(b)out.push(['no','带了倾向：“'+b[0]+'”','AI会顺着你的倾向去证明你是对的，你就听不到反面意见了。','把这句改成可以核实的事实（比如“展会上有20多人询价”），或者干脆删掉。','a2']);
+ const v=t.match(/(好不好|怎么样|合理吗|值不值|行不行|可不可以|该不该|对不对|靠谱吗|可行吗|有没有前途)/);
+ if(v)out.push(['w','在要一个“是或否”的答案：“'+v[0]+'”','直接要结论，你只能选择信或不信；要判断依据，你才能自己核对。','改成问“判断这件事该看哪几个维度、每个维度需要什么信息、我现在缺哪些”。','a1']);
+ if(/(提升|做好|优化|改善|加强|搞定|做大|做起来|变好)/.test(t)&&!/(具体|明天|步骤|动作|第一步)/.test(t))out.push(['w','目标偏抽象','“做好、提升”这类词，AI会回你同样抽象的建议。','加一句：每条建议要具体到明天就能做的动作、时间和判断标准。','a5']);
+ if(!/(反驳|风险|失败|缺点|代价|反对|坑|后悔|最坏)/.test(t))out.push(['w','没有要反面意见','AI天然倾向于顺着你说，你不要求，它很少主动泼冷水。','加一句：给出三条最强的反驳，并说明最可能失败在哪一步。','a3']);
+ if(!/(先问我|反问|问我几个|缺什么信息)/.test(t))out.push(['w','可以先让AI反问你','AI问回来的问题，往往正是你自己还没想清楚的地方。','开头加一句：回答之前，先问我三个你认为最关键、但我还没提供的信息。','a4']);
+ const qn=(t.match(/[？?]/g)||[]).length;if(qn>2)out.push(['w','一次问了 '+qn+' 个问题','问题一多，AI每个都只能浅浅答一下。','先挑最重要的一个问清楚，其余的下一轮再问。','']);
+ return {out,hit:hit.length};
+}
+function askPrompt(t,rewrite){return rewrite?
+`你是一位提问教练，用简体中文回答，语气直接友善。学员明确要求你直接帮她改写下面这个准备发给AI的问题。
+请用“约束五件套”（我是谁、处境、资源、时间、最不能承受什么）和提问七招（要判断依据、主动要反面、先让AI反问、追到可执行细节等）来改写。她没提供的信息不要编造，用【待补：……】标出来。
+格式（不用Markdown符号）：先给改写后的完整问题，然后用三四条短句说明你改了哪里、为什么这样改。
+
+学员的问题：
+"""
+${t}
+"""`:
+`你是一位提问教练，用简体中文回答，语气直接友善。学员准备把下面这个问题发给AI。请帮她把问题问得更准，但必须遵守：只给修改建议并讲清理由，不要替她改写出完整的问题（她想通过理解逻辑自己变强）。
+参考的方法：约束五件套（我是谁、处境、资源、时间、最不能承受什么）；要判断依据不要答案；主动要反面（事前验尸）；先让AI反问；追问到可执行细节；换三个身份问；往上问目的、往下问因果。只写事实，不夹带自己的倾向。
+回答格式（不用Markdown符号）：
+第一行：一句话总评
+然后：最多4条建议，每条写成“问题在哪 → 为什么要改 → 往哪个方向改（可以给一个很短的例子，不写整句成品）”
+最后：问她2个你最想知道、但问题里没写的信息
+
+学员的问题：
+"""
+${t}
+"""`}
+function askGo(){
+ const t=$('ca-text').value.trim();if(!t){toast('先写下你的问题');$('ca-text').focus();return}
+ store.set('tb-ca',t);const r=askRules(t);
+ const no=r.out.filter(x=>x[0]==='no').length,w=r.out.filter(x=>x[0]==='w').length;
+ $('ca-rule').innerHTML=`<div class="k">规则检查 · 约束 ${r.hit}/5</div><p class="verdict ${no?'bad':w?'':'ok'}">${no?'还有 '+no+' 处必须补，补完再发给AI。':w?'基本可以发了，下面 '+w+' 条能让回答更好。':'问得很完整，可以直接发给AI了。'}</p><div class="finds">${r.out.map(x=>fnd(...x)).join('')}${CHK.filter(c=>c[1].test(t)).map(c=>fnd('ok','已写：'+c[0],'','','')).join('')}</div><p class="small" style="margin-top:8px">规则只看字面，难免误判。改完可以再点一次“教练看看”。</p>`;
+ $('ca-rewrite').hidden=!sampleFn;
+ if(sampleFn)runAI(askPrompt(t),$('ca-ai'),$('ca-go'));
+}
+$('ca-go').addEventListener('click',askGo);
+$('ca-fill').addEventListener('click',()=>{const v={};F.forEach(k=>v[k]=$('g-'+k).value.trim());
+ const parts=[v.q,v.who&&'我是'+v.who,v.sit&&'现在的情况：'+v.sit,v.res&&'我的资源：'+v.res,v.time&&'我的时间：'+v.time,v.risk&&'我最不能承受：'+v.risk].filter(Boolean);
+ if(!parts.length){toast('提问页还没填内容');return}$('ca-text').value=parts.join('\n');toast('已带入提问页的内容')});
+$('ca-copy').addEventListener('click',()=>{const t=$('ca-text').value.trim();if(!t){toast('先写下你的问题');return}copyText(askPrompt(t));toast('已复制，粘贴到 Claude App 里发送')});
+$('ca-rewrite').addEventListener('click',()=>{const t=$('ca-text').value.trim();if(!t)return;runAI(askPrompt(t,true),$('ca-ai'),$('ca-rewrite'))});
+{const s=store.get('tb-ca','');if(s)$('ca-text').value=s}
+
+/* --- 筛选教练 --- */
+const RX={st:/(你应该|应该|必须|务必|赶紧|马上|立即|一定要|建议你|最好|尽快|别犹豫|快去|下单|抓紧|千万)/,
+ inf:/(所以|因此|因而|说明|意味着|可见|由此|一定会|必然|肯定会|证明|导致|只要.*就)/,
+ abs:/(唯一|一定|肯定|绝对|100%|百分之百|永远|所有人|都会|从不|稳赚|没有风险|必然)/,
+ num:/(\d|百分之|[一二两三四五六七八九十百千万亿]+(元|万|倍|成|个百分点))/,
+ reg:/(法规|法律|政策|规定|认证|关税|税率|许可|执照|合同|条款|标准|HS|编码|剂量|利率|保险|落户|社保)/,
+ vague:/(重要的是|关键是|关键在于|核心是|要坚持|要用心|长期主义|顺势而为|认知|格局)/,
+ cost:/(代价|成本|风险|缺点|不足|但是|不过|然而|坏处|需要投入|难点|局限|副作用|前提是)/};
+function filterGo(){
+ const t=$('cf-text').value.trim();if(!t){toast('先把要检查的内容贴进来');$('cf-text').focus();return}
+ const ss=t.split(/(?<=[。！？!?；;\n])/).map(x=>x.trim()).filter(x=>x.replace(/[。！？!?；;\s]/g,'').length>1).slice(0,60);
+ const rows=ss.map(s=>{const tg=[];if(RX.st.test(s))tg.push(['st','立场']);if(RX.inf.test(s))tg.push(['in','推断']);if(RX.abs.test(s))tg.push(['in','绝对化']);if(RX.vague.test(s))tg.push(['in','难以证伪']);if(RX.reg.test(s))tg.push(['st','法规/条款，必须核实']);else if(RX.num.test(s))tg.push(['nu','有数字，要核实']);return {s,tg}});
+ const c=k=>rows.filter(r=>r.tg.some(x=>x[1]===k)).length;
+ const nSt=c('立场'),nIn=c('推断'),nAbs=c('绝对化')+c('难以证伪'),nFact=rows.filter(r=>r.tg.some(x=>x[1].includes('核实'))).length,hasCost=RX.cost.test(t);
+ const g=[
+  [nSt||nIn?'w':'ok','第1关 拆成事实、推断、立场',`找到 ${nSt} 句立场、${nIn} 句推断（下面已标出）。立场是对方希望你做什么，先别照做；推断要问一句“必然成立吗”。`,'','f1'],
+  [nAbs?'w':'ok','第2关 能不能被证伪',nAbs?`有 ${nAbs} 句是绝对化或难以证伪的说法。问一句：什么情况下它会被证明是错的？答不出来，就别当结论。`:'没发现明显的绝对化说法。','','f2'],
+  [hasCost?'ok':'no','第3关 有没有讲代价',hasCost?'提到了代价或风险。再确认一下：这个代价你付得起吗？':'通篇没讲代价，等于被删掉了一半。追问：这条路要拿什么去换，我付得起吗？','','f3'],
+  ['w','第4关 对抗验证','规则查不了这一关。点下面“复制反方论证请求”，新开一个对话让AI站在反方论证一遍。','','f4'],
+  ['w','第5关 让现实当终审','想想能不能先用很小的成本试一下。做实验前，用“工具”页的计算器看看样本够不够。','','f5'],
+  ['w','第6关 写进判断底稿','决定照做的话，点下面“记进判断底稿”，写下预期和验证日。','','f6'],
+  [nFact?'no':'ok','第7关 事实核查',nFact?`有 ${nFact} 句带数字或法规条款（标绿或标红的），都要回官方来源或原始文件核对，AI给的出处也要点进去看。`:'没发现需要核实的数字或法规。','','f7']];
+ const pass=g.filter(x=>x[0]==='ok').length;
+ $('cf-rule').innerHTML=`<div class="k">七关检查</div><p class="verdict ${pass<=2?'bad':pass<=4?'':'ok'}">${pass<=2?'问题不少：先别信，也别照做。':pass<=4?'可以当假设，还不能当结论。':'规则能查的几关都过了，剩下几关需要你自己确认。'}</p><div class="finds">${g.map(x=>fnd(x[0],x[1],'',x[2],x[4])).join('')}</div>
+<div class="row" style="margin-top:12px"><button type="button" id="cf-counter">复制反方论证请求</button><button type="button" id="cf-log">记进判断底稿</button><a href="#tools" class="small" style="align-self:center">去打勾“一次过七关”</a></div>
+<div class="k">逐句标注</div><div>${rows.map(r=>`<div class="sent">${r.tg.map(x=>`<span class="stag ${x[0]}">${esc(x[1])}</span>`).join('')}${esc(r.s)}</div>`).join('')}</div>`;
+ $('cf-counter').onclick=()=>{copyText(`请站在完全相反的立场，论证为什么下面这段话的结论是错的。给出最强的论据，并说明需要什么证据才能判断谁对：\n\n${t}`);toast('已复制，新开一个对话粘贴发送')};
+ $('cf-log').onclick=()=>{const first=(rows.find(r=>r.tg.some(x=>x[1]==='立场'))||rows[0]).s;location.hash='records';setRT('judge');$('jform').hidden=false;$('j-what').value=first.slice(0,200);$('j-why').value='筛选教练：七关过了 '+pass+' 关'+($('cf-q').value.trim()?'；问题：'+$('cf-q').value.trim():'');setTimeout(()=>$('j-what').focus(),50)};
+ if(sampleFn)runAI(filterPrompt(t),$('cf-ai'),$('cf-go'));
+}
+function filterPrompt(t){const q=$('cf-q').value.trim();return `你是一位信息筛选教练，用简体中文回答，语气直接友善，不用Markdown符号。学员拿到了下面这段内容（可能是AI的回答、文章或别人的建议），想判断能不能信、要不要照做。${q?'\n她当时问的问题是：'+q:''}
+请按“筛选七关”帮她检查：
+1. 拆句：挑出最关键的几句，分别标成 事实（能独立核实）/ 推断（从事实推出）/ 立场（说话人希望她相信或去做的），并说明推断是否必然成立
+2. 哪些说法无法被证伪，等于没说
+3. 有没有讲代价；没讲的话，最可能被省略的代价是什么
+4. 给出一条最强的反方论证
+5. 建议一个成本最低的小实验来验证
+6. 哪些数字、法规、条款必须核实，应该去哪类官方来源核实（不要编造具体网址）
+最后给一个总判断：先别信 / 只能当假设 / 基本可信，并问她一个能帮她判断的问题。
+
+内容：
+"""
+${t}
+"""`}
+$('cf-go').addEventListener('click',filterGo);
+$('cf-copy').addEventListener('click',()=>{const t=$('cf-text').value.trim();if(!t){toast('先把要检查的内容贴进来');return}copyText(filterPrompt(t));toast('已复制，粘贴到 Claude App 里发送')});
+
+/* --- 复盘教练 --- */
+const CAUSE_TIP={'信息源':'依据的信息本身就错了或很片面：数据不对、只听了一方、AI编的、来源不可靠。','逻辑':'信息没错，但推理出了问题：以偏概全、把相关当因果、样本太小就下结论。','情绪':'当时太想要某个结果，忽略了反面信号，或者因为害怕错过而仓促决定。','运气或外部变化':'判断过程没问题，是之后出现了当时没法预料的变化。'};
+function renderReviewPick(keep){
+ const all=logs.filter(isJ);const ord=l=>isDue(l)?0:!l.result?1:2;
+ const list=[...all].sort((a,b)=>ord(a)-ord(b)||(b.created||0)-(a.created||0));
+ const cur=$('cr-pick').value;
+ $('cr-pick').innerHTML=list.length?'<option value="">— 选一条 —</option>'+list.map(l=>`<option value="${esc(l.id)}">${isDue(l)?'【该复盘】':!l.result?'【待验证】':'【已复盘】'}${esc(l.what.slice(0,40))}</option>`).join(''):'<option value="">还没有判断记录</option>';
+ if(cur&&list.some(l=>l.id===cur))$('cr-pick').value=cur;
+ if(!keep)renderReviewBody();
+}
+function renderReviewBody(){
+ const l=logs.find(x=>x.id===$('cr-pick').value);const b=$('cr-body');
+ if(!l){b.innerHTML=logs.filter(isJ).length?'':'<p class="empty">先去“记录”页记一个判断，到期了再来复盘。</p>';return}
+ b.innerHTML=`<div class="card" style="margin-top:14px"><p><b>当时的判断：</b>${esc(l.what)}</p><p class="small">${esc(l.date)} · 把握 ${esc(l.conf)}% · 来源：${esc(l.src)}${l.due?' · 验证日 '+esc(l.due):''}</p><p><b>依据：</b>${esc(l.why)||'—'}<br><b>预期：</b>${esc(l.exp)||'—'}</p></div>
+<div class="k">第 1 问</div><label for="cr-1">实际发生了什么？只写事实。</label><textarea id="cr-1">${esc(l.actual)}</textarea>
+<div class="k">第 2 问</div><label for="cr-2">和当初的预期相比，这个判断……</label><select id="cr-2"><option value="">选一个</option>${['对','部分对','错'].map(x=>`<option ${l.result===x?'selected':''}>${x}</option>`).join('')}</select>
+<div class="k">第 3 问</div><label for="cr-3">当时的依据里，哪一条后来证明不成立，或者被你看漏了？</label><textarea id="cr-3">${esc(l.wf||'')}</textarea>
+<div class="k">第 4 问</div><label>回头看，问题最主要出在哪一步？</label><div id="cr-4">${CAUSE.map(c=>`<label class="opt"><input type="radio" name="cr4" value="${c}" ${l.cause===c?'checked':''}><span><b>${c}</b><br><span class="small">${CAUSE_TIP[c]}</span></span></label>`).join('')}</div>
+<div class="k">第 5 问</div><label for="cr-5">下次遇到类似判断，你会先做哪一件具体的事？</label><textarea id="cr-5" placeholder="例如：下判断前，先找一个官方数据或一个真实买家核实">${esc(l.lesson)}</textarea>
+<div id="cr-warn"></div>
+<div class="row" style="margin-top:12px"><button type="button" class="pri" id="cr-save">保存复盘</button><button type="button" class="ai-only" id="cr-ai-go">让 Claude 看看这次复盘</button><button type="button" class="copy-only" id="cr-copy">复制给 Claude</button></div>
+<div class="ai" id="cr-ai" hidden></div>`;
+ coachStatus();
+ $('cr-save').onclick=()=>reviewSave(l);
+ $('cr-ai-go').onclick=()=>{const p=reviewPrompt(l);if(p)runAI(p,$('cr-ai'),$('cr-ai-go'))};
+ $('cr-copy').onclick=()=>{const p=reviewPrompt(l);if(p){copyText(p);toast('已复制，粘贴到 Claude App 里发送')}};
+}
+function reviewVals(){return {actual:$('cr-1').value.trim(),result:$('cr-2').value,wf:$('cr-3').value.trim(),cause:(document.querySelector('input[name=cr4]:checked')||{}).value||'',lesson:$('cr-5').value.trim()}}
+function reviewCheck(v){const w=[];
+ if(!v.actual)w.push('第1问还空着：先写下实际发生了什么，复盘才有对照。');
+ if(!v.result)w.push('第2问还没选：对、部分对，还是错？');
+ if(v.result&&v.result!=='对'&&!v.cause)w.push('第4问还没选：不知道错在哪一步，下次还会再错。');
+ if(v.lesson&&(v.lesson.replace(/\s/g,'').length<10||/^(注意|小心|加油|努力|多想想|以后注意|谨慎)/.test(v.lesson)))w.push('第5问写得太笼统。“注意、小心”下次很难照做，写成一个具体动作，比如“下判断前先找一个官方来源”。');
+ if(!v.lesson)w.push('第5问还空着：复盘最值钱的就是这一句。');
+ return w}
+function reviewSave(l){const v=reviewVals(),w=reviewCheck(v);
+ $('cr-warn').innerHTML=w.length?`<div class="warn" style="margin-top:12px">${w.map(esc).join('<br>')}</div>`:'';
+ if(!v.actual||!v.result){toast('先回答第1、2问');return}
+ saveEntry({...l,...v});toast(w.length?'已保存，教练还有建议，看看上面的提醒':'复盘已保存');setTimeout(()=>renderReviewPick(true),300)}
+function reviewPrompt(l){const v=reviewVals();if(!v.actual){toast('先回答第1问');return ''}
+ return `你是一位复盘教练，用简体中文回答，语气直接友善，不用Markdown符号。学员在复盘自己之前做过的一个判断，请帮她把复盘做深一层。只给建议和理由，不要替她重写复盘。
+当时的判断：${l.what}
+当时的依据：${l.why||'（没写）'}
+信息来源：${l.src}；当时的把握：${l.conf}%
+当时的预期：${l.exp||'（没写）'}
+实际发生了什么：${v.actual}
+她认为结果：${v.result||'（没选）'}
+她认为不成立的依据：${v.wf||'（没写）'}
+她认为问题出在：${v.cause||'（没选）'}（可选项：信息源 / 逻辑 / 情绪 / 运气或外部变化）
+她写的下次怎么做：${v.lesson||'（没写）'}
+请回答：
+1. 她对错因的归类是否站得住？如果你看到别的可能，说出来并给理由
+2. 当时的把握（${l.conf}%）和结果相比，是过于自信还是太保守
+3. 她写的“下次怎么做”够不够具体、能不能照着做；不够的话指出缺什么
+4. 最后问她一个能让这次复盘更深一层的问题`}
+$('cr-pick').addEventListener('change',renderReviewBody);
+
+/* --- 每周教练 --- */
+function weekStats(){
+ const wk=Date.now()-7*864e5,d7=new Set([0,1,2,3,4,5,6].map(i=>addDays(-i)));
+ const pDays=prog.days.filter(d=>d7.has(d)).length;
+ const prac=M.filter(m=>P(m).n),weak=[...M].sort((a,b)=>(P(a).lv-P(b).lv)||((P(b).n-P(b).ok)-(P(a).n-P(a).ok))).slice(0,2);
+ const J=logs.filter(isJ),jNew=J.filter(l=>(l.created||0)>=wk).length,due=J.filter(isDue).length;
+ const done=J.filter(l=>l.result),right=done.filter(l=>l.result==='对').length;
+ const errs={};done.filter(l=>l.cause).forEach(l=>errs[l.cause]=(errs[l.cause]||0)+1);const top=Object.entries(errs).sort((a,b)=>b[1]-a[1])[0];
+ const Pr=logs.filter(l=>l.kind==='prompt'),prNew=Pr.filter(l=>(l.created||0)>=wk).length,prNo=Pr.filter(l=>!l.note).length;
+ const wkTicks=(store.get('tb-week',[])||[]).filter(Boolean).length;
+ return {pDays,streak:streak(),mast:M.filter(m=>P(m).lv>=5).length,prac:prac.length,weak,jNew,due,done:done.length,acc:done.length?Math.round(right/done.length*100):null,top,prNew,prNo,wkTicks}}
+const CAUSE_ACT={'信息源':'下周每做一个判断，至少找一个官方数据或真人来源核对过再下结论。','逻辑':'下周每个判断都问自己一句：样本够吗？是相关还是因果？','情绪':'下周遇到想立刻决定的事，先记进判断底稿，隔一天再决定。','运气或外部变化':'你的判断过程没大问题，下周继续保持，并在验证日按时复盘。'};
+function renderWeek(){const s=weekStats();const acts=[];
+ if(s.pDays<5)acts.push(`把练习放进固定时间，比如每天睡前5分钟。这周练了 ${s.pDays} 天，下周目标至少5天。`);
+ s.weak.forEach(m=>acts.push(`单练「${m.t}」：${P(m).n?'掌握度只有 '+P(m).lv+'/5':'还没练过'}。去“练习”页的掌握程度里点它，连练两天。`));
+ if(s.due)acts.push(`先把 ${s.due} 条到期的判断复盘掉，用复盘教练一问一答，十分钟就够。`);
+ if(!s.jNew)acts.push('这周没有记新的判断。下周至少记两条，哪怕是很小的事（买不买、去不去、选哪个）。');
+ if(s.top)acts.push(CAUSE_ACT[s.top[0]]);
+ if(s.prNo>2)acts.push(`有 ${s.prNo} 条提问记录还没写收获，花两分钟补上，下次问类似问题时就有参考。`);
+ $('cw-rule').innerHTML=`<div class="lstat"><div><b>${s.pDays}/7</b>本周练习天数</div><div><b>${s.streak}</b>连续天数</div><div><b>${s.mast}/14</b>已掌握</div><div><b>${s.jNew}</b>本周新判断</div><div><b>${s.acc==null?'—':s.acc+'%'}</b>判断正确率</div></div>
+<div class="finds">
+${fnd(s.pDays>=5?'ok':'w','练习',s.pDays>=5?'这周练得很稳，继续保持节奏。':'练习天数不够，判断力是靠频率练出来的。','','')}
+${fnd(s.prac>=10?'ok':'w','覆盖面',`14招里已经练过 ${s.prac} 招。`+(s.prac<14?'没练过的招，每日练习会陆续安排。':''),'','')}
+${fnd(s.due?'no':'ok','复盘',s.due?`有 ${s.due} 条判断到期还没复盘。不复盘，判断底稿就只是日记。`:'到期的判断都复盘了。','','')}
+${fnd(s.top?'w':'ok','最常见的错',s.top?`最常错在「${s.top[0]}」，一共 ${s.top[1]} 次。${CAUSE_TIP[s.top[0]]}`:'还没有足够的复盘记录来看规律。','','')}
+${fnd(s.wkTicks>=5?'ok':'w','每周清单',`速查页的每周复盘清单打了 ${s.wkTicks} 个勾。`,'','')}
+</div>
+<div class="k">下周重点</div><ol class="steps">${acts.slice(0,4).map(a=>`<li>${esc(a)}</li>`).join('')||'<li>保持现在的节奏：每天3题，判断到期就复盘。</li>'}</ol>`;
+ coachStatus()}
+function weekPrompt(){const s=weekStats();
+ return `你是一位学习教练，用简体中文回答，语气鼓励但诚实，不说空话，不用Markdown符号。学员在用一个App练习“AI提问七招、筛选七关”并记录自己的判断。下面是她最近7天的数据：
+- 本周练习天数：${s.pDays}/7，连续 ${s.streak} 天
+- 14招里已掌握 ${s.mast} 招，练过 ${s.prac} 招；最弱的两招：${s.weak.map(m=>m.t+'（掌握 '+P(m).lv+'/5，练过 '+P(m).n+' 次）').join('、')}
+- 本周新记判断 ${s.jNew} 条；到期未复盘 ${s.due} 条；已复盘 ${s.done} 条，正确率 ${s.acc==null?'暂无':s.acc+'%'}
+- 最常见的错因：${s.top?s.top[0]+'（'+s.top[1]+'次）':'暂无'}
+- 本周新提问记录 ${s.prNew} 条，还没写收获的 ${s.prNo} 条
+请写一段本周点评：
+1. 一个做得好的地方（具体到数据）
+2. 一个最该改进的地方，以及为什么
+3. 下周3个具体动作，每个写清哪天做、做什么、做多久
+4. 最后问她一个问题，帮她想清楚下周最想练好的是什么`}
+$('cw-go').addEventListener('click',()=>runAI(weekPrompt(),$('cw-ai'),$('cw-go')));
+$('cw-copy').addEventListener('click',()=>{copyText(weekPrompt());toast('已复制，粘贴到 Claude App 里发送')});
+
 /* ===== 桌面App ===== */
 let desk=null,inApp=false,lastDue=-1;
 function drawIcon(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
@@ -751,6 +1039,7 @@ const startDesktop=async()=>{
     {label:'速查',accelerator:'CmdOrCtrl+1',click:()=>{location.hash='home'}},
     {label:'提问',accelerator:'CmdOrCtrl+2',click:()=>{location.hash='ask'}},
     {label:'练习',accelerator:'CmdOrCtrl+3',click:()=>{location.hash='learn'}},
+    {label:'教练',accelerator:'CmdOrCtrl+7',click:()=>{location.hash='coach'}},
     {label:'方法',accelerator:'CmdOrCtrl+4',click:()=>{location.hash='methods'}},
     {label:'工具',accelerator:'CmdOrCtrl+5',click:()=>{location.hash='tools'}},
     {label:'记录',accelerator:'CmdOrCtrl+6',click:()=>{location.hash='records'}},
