@@ -244,7 +244,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <div class="out" aria-live="polite">
 <div class="warn" id="g-warn" hidden></div>
 <pre id="g-out"></pre>
-<div class="row"><button class="red" type="button" id="g-copy">复制提示词</button><button type="button" id="g-save">存进提问记录</button><span class="small" id="g-count"></span></div>
+<div class="row"><button class="red" type="button" id="g-open">发给 Claude</button><button type="button" id="g-copy">复制提示词</button><button type="button" id="g-save">存进提问记录</button><span class="small" id="g-count"></span></div>
 </div>
 </div>
 </section>
@@ -258,7 +258,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <p class="mut">把你准备发给AI的问题原样写下来，越粗糙越好。教练只告诉你哪里要改、为什么要改，不替你改。</p>
 <label for="ca-text">你的问题</label>
 <textarea id="ca-text" placeholder="例如：我想做外贸，第一个产品选什么好？"></textarea>
-<div class="row" style="margin-top:10px"><button type="button" class="pri" id="ca-go">教练看看</button><button type="button" id="ca-fill">带入提问页的内容</button><button type="button" class="copy-only" id="ca-copy">复制给 Claude</button><button type="button" id="ca-rewrite" hidden>直接帮我改一版</button></div>
+<div class="row" style="margin-top:10px"><button type="button" class="pri" id="ca-go">教练看看</button><button type="button" id="ca-fill">带入提问页的内容</button><button type="button" class="copy-only" id="ca-copy">发给 Claude</button><button type="button" id="ca-rewrite" hidden>直接帮我改一版</button></div>
 <div id="ca-rule"></div>
 <div class="ai" id="ca-ai" hidden></div>
 </div>
@@ -266,7 +266,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <p class="mut">把AI的回答、一篇文章或别人的建议贴进来，教练带你逐关检查，并逐句标出立场、推断和要核实的数字。</p>
 <label for="cf-q">当时问的问题（可不填）</label><input id="cf-q">
 <label for="cf-text">要检查的内容</label><textarea id="cf-text" style="min-height:150px"></textarea>
-<div class="row" style="margin-top:10px"><button type="button" class="pri" id="cf-go">逐关检查</button><button type="button" class="copy-only" id="cf-copy">复制给 Claude</button></div>
+<div class="row" style="margin-top:10px"><button type="button" class="pri" id="cf-go">逐关检查</button><button type="button" class="copy-only" id="cf-copy">发给 Claude</button></div>
 <div id="cf-rule"></div>
 <div class="ai" id="cf-ai" hidden></div>
 </div>
@@ -278,7 +278,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <div class="cpanel" id="c-week" hidden>
 <p class="mut">教练根据你最近7天的练习和记录，告诉你哪里做得好、下周重点练什么。</p>
 <div id="cw-rule"></div>
-<div class="row" style="margin-top:12px"><button type="button" class="pri ai-only" id="cw-go">让 Claude 写本周点评</button><button type="button" class="copy-only" id="cw-copy">复制给 Claude</button></div>
+<div class="row" style="margin-top:12px"><button type="button" class="pri ai-only" id="cw-go">让 Claude 写本周点评</button><button type="button" class="copy-only" id="cw-copy">发给 Claude</button></div>
 <div class="ai" id="cw-ai" hidden></div>
 </div>
 </section>
@@ -297,7 +297,7 @@ ol.steps{margin:0;padding-left:1.3em}
 <!-- 练习 -->
 <section class="view" id="v-learn">
 <h1>练习</h1>
-<p class="mut">每天练3题。练对了，这一招隔几天再出现；练错了，明天再来。改写题没有唯一答案，对照参考答案，或复制给 Claude 点评，再给自己打分。</p>
+<p class="mut">每天练3题。练对了，这一招隔几天再出现；练错了，明天再来。改写题没有唯一答案，对照参考答案，或发给 Claude 点评，再给自己打分。</p>
 <div class="lstat" id="l-stat"></div>
 <div class="row" id="l-start"></div>
 <div id="l-card"></div>
@@ -386,6 +386,11 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let tt;const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1700)};
 async function copyText(text){try{await navigator.clipboard.writeText(text);toast('已复制')}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();toast(ok?'已复制':'复制失败，请手动选中复制')}}
+const CLAUDE_MAX=6000;
+function openClaude(text){
+ try{navigator.clipboard.writeText(text).catch(()=>{})}catch(e){}
+ const a=document.createElement('a');a.href='https://claude.ai/new?q='+encodeURIComponent(text.length>CLAUDE_MAX?text.slice(0,CLAUDE_MAX):text);a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+ toast(text.length>CLAUDE_MAX?'内容太长，只带上了前面一部分。完整内容已复制，可在 Claude 里粘贴替换':'正在打开 Claude，提示词已填好，检查后点发送。如果输入框是空的，长按粘贴即可')}
 document.addEventListener('click',e=>{const c=e.target.closest('[data-tpl]');if(c)copyText(c.dataset.tpl)});
 const today=()=>new Date().toISOString().slice(0,10);
 
@@ -548,6 +553,7 @@ $('gform').addEventListener('input',build);$('gform').addEventListener('change',
 $('g-demo').addEventListener('click',()=>{const d=SC[scene].demo;F.forEach(k=>$('g-'+k).value=d[k]);build();toast('已填入「'+SC[scene].n+'」示例')});
 $('g-clear').addEventListener('click',()=>{F.forEach(k=>$('g-'+k).value='');build()});
 $('g-copy').addEventListener('click',()=>copyText($('g-out').textContent));
+$('g-open').addEventListener('click',()=>{if(!$('g-q').value.trim()){toast('先写下你的问题');$('g-q').focus();return}openClaude($('g-out').textContent)});
 $('g-save').addEventListener('click',()=>{const q=$('g-q').value.trim();if(!q){toast('先写下你的问题');$('g-q').focus();return}
   saveEntry({id:newId(),kind:'prompt',created:Date.now(),date:today(),area:SC[scene].n,q,prompt:$('g-out').textContent,note:''});toast('已存进提问记录')});
 
@@ -755,9 +761,9 @@ function renderCard(){
 <div class="row" style="margin-top:10px"><button type="button" class="pri" id="l-sub">写好了，看参考</button><button type="button" class="link" id="l-skip">不会，直接看参考</button></div><div id="l-after"></div></div>`;
   const show=()=>{const ans=$('l-ans').value.trim();$('l-sub').disabled=true;$('l-skip').disabled=true;
    $('l-after').innerHTML=`<div class="k">参考改写</div><div class="ex"><div class="good">${esc(q.good)}</div></div>
-${ans?`<div class="row" style="margin-top:10px"><button type="button" id="l-aicopy">复制点评请求，发给 Claude</button></div>`:''}<div class="ai" id="l-aiout"></div>
+${ans?`<div class="row" style="margin-top:10px"><button type="button" id="l-aicopy">发给 Claude 点评</button></div>`:''}<div class="ai" id="l-aiout"></div>
 <div class="k">对照之后，给自己打分</div><div class="rate"><button type="button" data-r="wrong">没改对</button><button type="button" data-r="ok">差不多</button><button type="button" data-r="good">改得好</button></div>`;
-   if($('l-aicopy'))$('l-aicopy').onclick=()=>{copyText(aiPrompt(m,q,ans));toast('已复制，粘贴到 Claude App 里发送')};
+   if($('l-aicopy'))$('l-aicopy').onclick=()=>{openClaude(aiPrompt(m,q,ans))};
    $('l-after').querySelector('.rate').onclick=e=>{const b=e.target.closest('[data-r]');if(b)next(b.dataset.r)};
    if(!ans)$('l-after').querySelector('[data-r=good]').disabled=true};
   $('l-sub').onclick=()=>{if(!$('l-ans').value.trim()){toast('先写下你的改写，或者点“直接看参考”');$('l-ans').focus();return}show()};
@@ -778,9 +784,9 @@ const COACH_MODES=[['ask','提问教练','检查我的问题'],['filter','筛选
 let cMode=store.get('tb-cmode','ask');if(!COACH_MODES.some(m=>m[0]===cMode))cMode='ask';
 const mlink=id=>{const m=M.find(x=>x.id===id);return m?` <a href="#m-${id}" class="small">看「${esc(m.t)}」</a>`:''};
 function coachStatus(){
- $('c-status').textContent=sampleFn?'Claude 正在当你的教练：它会真的读你写的内容。规则检查的结果也会同时给出。':'离线教练：按规则检查，马上出结果。想要更深入的点评，点“复制给 Claude”，粘贴到 Claude App 里。';
+ $('c-status').textContent=sampleFn?'Claude 正在当你的教练：它会真的读你写的内容。规则检查的结果也会同时给出。':'离线教练：按规则检查，马上出结果。想要更深入的点评，点“发给 Claude”，会打开 Claude 并带上内容。';
  document.querySelectorAll('.ai-only').forEach(b=>b.hidden=!sampleFn);
- document.querySelectorAll('.copy-only').forEach(b=>b.textContent=sampleFn?'复制给 Claude App':'复制给 Claude');
+ document.querySelectorAll('.copy-only').forEach(b=>b.textContent=sampleFn?'在 Claude 新对话里继续':'发给 Claude');
 }
 function renderCoachModes(){
  $('c-modes').innerHTML=COACH_MODES.map(m=>`<button type="button" data-cm="${m[0]}" aria-pressed="${m[0]===cMode}"><b>${m[1]}</b><span>${m[2]}</span></button>`).join('');
@@ -791,11 +797,11 @@ function renderCoachModes(){
 }
 $('c-modes').addEventListener('click',e=>{const b=e.target.closest('[data-cm]');if(!b)return;cMode=b.dataset.cm;store.set('tb-cmode',cMode);renderCoachModes()});
 async function runAI(prompt,out,btn){
- if(!sampleFn){copyText(prompt);toast('已复制，粘贴到 Claude App 里发送');return}
+ if(!sampleFn){openClaude(prompt);return}
  if(btn)btn.disabled=true;out.hidden=false;out.textContent='教练正在看…';
  try{const r=await sampleFn(prompt,{modelTier:'default',onText:({text})=>{out.textContent=text}});out.textContent=r.text}
  catch(e){
-  if(e&&e.code==='not_granted'){sampleFn=null;coachStatus();out.textContent='没有开启 Claude 教练。可以点“复制给 Claude”，在 Claude App 里继续。'}
+  if(e&&e.code==='not_granted'){sampleFn=null;coachStatus();out.textContent='没有开启 Claude 教练。可以点“发给 Claude”，在 Claude 里继续。'}
   else if(e&&e.code==='rate_limited')out.textContent='教练暂时忙不过来，稍后再试。上面的规则检查结果仍然有效。';
   else out.textContent='这次没连上 Claude 教练，稍后再试。上面的规则检查结果仍然有效。'}
  if(btn)btn.disabled=false;
@@ -855,7 +861,7 @@ $('ca-go').addEventListener('click',askGo);
 $('ca-fill').addEventListener('click',()=>{const v={};F.forEach(k=>v[k]=$('g-'+k).value.trim());
  const parts=[v.q,v.who&&'我是'+v.who,v.sit&&'现在的情况：'+v.sit,v.res&&'我的资源：'+v.res,v.time&&'我的时间：'+v.time,v.risk&&'我最不能承受：'+v.risk].filter(Boolean);
  if(!parts.length){toast('提问页还没填内容');return}$('ca-text').value=parts.join('\n');toast('已带入提问页的内容')});
-$('ca-copy').addEventListener('click',()=>{const t=$('ca-text').value.trim();if(!t){toast('先写下你的问题');return}copyText(askPrompt(t));toast('已复制，粘贴到 Claude App 里发送')});
+$('ca-copy').addEventListener('click',()=>{const t=$('ca-text').value.trim();if(!t){toast('先写下你的问题');return}openClaude(askPrompt(t))});
 $('ca-rewrite').addEventListener('click',()=>{const t=$('ca-text').value.trim();if(!t)return;runAI(askPrompt(t,true),$('ca-ai'),$('ca-rewrite'))});
 {const s=store.get('tb-ca','');if(s)$('ca-text').value=s}
 
@@ -883,9 +889,9 @@ function filterGo(){
   [nFact?'no':'ok','第7关 事实核查',nFact?`有 ${nFact} 句带数字或法规条款（标绿或标红的），都要回官方来源或原始文件核对，AI给的出处也要点进去看。`:'没发现需要核实的数字或法规。','','f7']];
  const pass=g.filter(x=>x[0]==='ok').length;
  $('cf-rule').innerHTML=`<div class="k">七关检查</div><p class="verdict ${pass<=2?'bad':pass<=4?'':'ok'}">${pass<=2?'问题不少：先别信，也别照做。':pass<=4?'可以当假设，还不能当结论。':'规则能查的几关都过了，剩下几关需要你自己确认。'}</p><div class="finds">${g.map(x=>fnd(x[0],x[1],'',x[2],x[4])).join('')}</div>
-<div class="row" style="margin-top:12px"><button type="button" id="cf-counter">复制反方论证请求</button><button type="button" id="cf-log">记进判断底稿</button><a href="#tools" class="small" style="align-self:center">去打勾“一次过七关”</a></div>
+<div class="row" style="margin-top:12px"><button type="button" id="cf-counter">发给 Claude 做反方论证</button><button type="button" id="cf-log">记进判断底稿</button><a href="#tools" class="small" style="align-self:center">去打勾“一次过七关”</a></div>
 <div class="k">逐句标注</div><div>${rows.map(r=>`<div class="sent">${r.tg.map(x=>`<span class="stag ${x[0]}">${esc(x[1])}</span>`).join('')}${esc(r.s)}</div>`).join('')}</div>`;
- $('cf-counter').onclick=()=>{copyText(`请站在完全相反的立场，论证为什么下面这段话的结论是错的。给出最强的论据，并说明需要什么证据才能判断谁对：\n\n${t}`);toast('已复制，新开一个对话粘贴发送')};
+ $('cf-counter').onclick=()=>{openClaude(`请站在完全相反的立场，论证为什么下面这段话的结论是错的。给出最强的论据，并说明需要什么证据才能判断谁对：\n\n${t}`);toast('已复制')};
  $('cf-log').onclick=()=>{const first=(rows.find(r=>r.tg.some(x=>x[1]==='立场'))||rows[0]).s;location.hash='records';setRT('judge');$('jform').hidden=false;$('j-what').value=first.slice(0,200);$('j-why').value='筛选教练：七关过了 '+pass+' 关'+($('cf-q').value.trim()?'；问题：'+$('cf-q').value.trim():'');setTimeout(()=>$('j-what').focus(),50)};
  if(sampleFn)runAI(filterPrompt(t),$('cf-ai'),$('cf-go'));
 }
@@ -904,7 +910,7 @@ function filterPrompt(t){const q=$('cf-q').value.trim();return `你是一位信�
 ${t}
 """`}
 $('cf-go').addEventListener('click',filterGo);
-$('cf-copy').addEventListener('click',()=>{const t=$('cf-text').value.trim();if(!t){toast('先把要检查的内容贴进来');return}copyText(filterPrompt(t));toast('已复制，粘贴到 Claude App 里发送')});
+$('cf-copy').addEventListener('click',()=>{const t=$('cf-text').value.trim();if(!t){toast('先把要检查的内容贴进来');return}openClaude(filterPrompt(t))});
 
 /* --- 复盘教练 --- */
 const CAUSE_TIP={'信息源':'依据的信息本身就错了或很片面：数据不对、只听了一方、AI编的、来源不可靠。','逻辑':'信息没错，但推理出了问题：以偏概全、把相关当因果、样本太小就下结论。','情绪':'当时太想要某个结果，忽略了反面信号，或者因为害怕错过而仓促决定。','运气或外部变化':'判断过程没问题，是之后出现了当时没法预料的变化。'};
@@ -926,12 +932,12 @@ function renderReviewBody(){
 <div class="k">第 4 问</div><label>回头看，问题最主要出在哪一步？</label><div id="cr-4">${CAUSE.map(c=>`<label class="opt"><input type="radio" name="cr4" value="${c}" ${l.cause===c?'checked':''}><span><b>${c}</b><br><span class="small">${CAUSE_TIP[c]}</span></span></label>`).join('')}</div>
 <div class="k">第 5 问</div><label for="cr-5">下次遇到类似判断，你会先做哪一件具体的事？</label><textarea id="cr-5" placeholder="例如：下判断前，先找一个官方数据或一个真实买家核实">${esc(l.lesson)}</textarea>
 <div id="cr-warn"></div>
-<div class="row" style="margin-top:12px"><button type="button" class="pri" id="cr-save">保存复盘</button><button type="button" class="ai-only" id="cr-ai-go">让 Claude 看看这次复盘</button><button type="button" class="copy-only" id="cr-copy">复制给 Claude</button></div>
+<div class="row" style="margin-top:12px"><button type="button" class="pri" id="cr-save">保存复盘</button><button type="button" class="ai-only" id="cr-ai-go">让 Claude 看看这次复盘</button><button type="button" class="copy-only" id="cr-copy">发给 Claude</button></div>
 <div class="ai" id="cr-ai" hidden></div>`;
  coachStatus();
  $('cr-save').onclick=()=>reviewSave(l);
  $('cr-ai-go').onclick=()=>{const p=reviewPrompt(l);if(p)runAI(p,$('cr-ai'),$('cr-ai-go'))};
- $('cr-copy').onclick=()=>{const p=reviewPrompt(l);if(p){copyText(p);toast('已复制，粘贴到 Claude App 里发送')}};
+ $('cr-copy').onclick=()=>{const p=reviewPrompt(l);if(p){openClaude(p)}};
 }
 function reviewVals(){return {actual:$('cr-1').value.trim(),result:$('cr-2').value,wf:$('cr-3').value.trim(),cause:(document.querySelector('input[name=cr4]:checked')||{}).value||'',lesson:$('cr-5').value.trim()}}
 function reviewCheck(v){const w=[];
@@ -1005,7 +1011,7 @@ function weekPrompt(){const s=weekStats();
 3. 下周3个具体动作，每个写清哪天做、做什么、做多久
 4. 最后问她一个问题，帮她想清楚下周最想练好的是什么`}
 $('cw-go').addEventListener('click',()=>runAI(weekPrompt(),$('cw-ai'),$('cw-go')));
-$('cw-copy').addEventListener('click',()=>{copyText(weekPrompt());toast('已复制，粘贴到 Claude App 里发送')});
+$('cw-copy').addEventListener('click',()=>{openClaude(weekPrompt())});
 
 /* ===== 桌面App ===== */
 let desk=null,inApp=false,lastDue=-1;

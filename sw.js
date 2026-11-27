@@ -1,5 +1,5 @@
 // 离线缓存：页面优先取网上最新版，没网时用缓存；图标等文件先用缓存
-const CACHE = 'tiwen-v6';
+const CACHE = 'tiwen-v7';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE)
